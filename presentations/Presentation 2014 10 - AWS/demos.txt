@@ -1,0 +1,76 @@
+General:
+
+    Start Tomcat:  sudo /etc/init.d/tomcat7 start
+    
+    Start Tomcat automatically on boot: 
+    
+        NOT WORKING - sudo chkconfig --level 2 /etc/init.d/tomcat7
+
+ELB:
+
+    Start with Test 1 and Test 2 in ELB.
+    
+    Have Test 3 running.
+    
+    Show instances and describe Tomcat setup.
+    
+        http://54.213.104.169:8080/helloworld/ Test 1
+        http://54.68.129.108:8080/helloworld/ Test 2
+        http://54.68.229.178:8080/helloworld/ Test 3
+    
+    Show load balancer.
+    
+    Show URL result:
+    
+        http://testelb-421718461.us-west-2.elb.amazonaws.com/helloworld/
+
+    Add Test 3 to the Load Balancer. Show URL again.
+
+    Create new load balancer.
+    
+        Internal vs. External
+        
+        Show Port Mapping
+    
+        Health check: HTTP:8080/helloworld/index.jsp
+
+        Describe health check.
+        
+    Remove Test 3 from Load Balancer. Delete other Load Balancer.
+
+
+DynamoDB:
+
+    Start with Table Empty.
+
+    Show Table.
+    
+    Show Indexes.
+    
+    Explore Table.
+    
+        New Item.
+        
+        Edit Item.
+
+        Delete Item.
+    
+    Create a Table (Armor Inventory).
+
+    
+Glacier:
+
+    Show vaults.
+    
+    Create vaults.
+    
+    Not very interesting without data upload / download, which it does not support.
+
+    Show LifeCycle rules on S3. (Bucket Properties.)
+    
+ElastiCache:
+
+    Start up a cache cluster.
+    
+    Note the snapshots.
+    

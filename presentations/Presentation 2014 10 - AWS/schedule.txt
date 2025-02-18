@@ -1,0 +1,43 @@
+Date:  Oct 10 2014
+
+0900 - 1030:  AWS Essentials - R. Stroupe
+   -- Introduction to AWS 
+   -- AWS Storage
+   -- AWS Compute Services & Networking
+   -- AWS Managed Services & Database
+   -- VPC
+
+1030 - 12:00: AWS Advanced Topics: -  R. Hughes
+- AWS Services in Detail. 
+   -- EC2
+   -- S3
+   -- IAM
+   --CloudWatch
+   --CloudFormation: Automate application deployment.
+
+12:00 -13:00: Lunch - R. Stroupe Corp Discussions
+
+13:00 - 14:00 AWS Advanced Topics:  - C. Lee
+- AWS Services in Detail (These topics and time slot are preferred for me; intro and best practices)
+   -- SQS
+   -- SNS
+   -- BeanStalk or SWF
+   -- RDS
+
+14:00 - 15:00 AWS Advanced Topics: - S. Mouring
+   -- ELB
+   -- DynamoDB
+   -- Glacier 
+   -- ElastiCache (tentative)
+   
+15:00 - 15:45 AWS Use Case - R. Hughes
+
+15:45 - 16:00 AWS Use Case - S. Mouring
+
+16:00 - 16:30 AWS Training/Certification/Labs Walk-through - R. Stroupe
+ - Review OPN Partner Network
+ - Review Amazon Certification Process and Incentives
+
+17:00 - 18:30 Sequoia Happy Hour at Tap Room!!
+
+

@@ -1,0 +1,16 @@
+zookeeper-1-101
+zookeeper-1-102
+zookeeper-1-103
+zookeeper-2-101
+zookeeper-2-102
+zookeeper-2-103
+zookeeper-3-101
+zookeeper-3-102
+zookeeper-3-103
+zookeeper-4-101
+zookeeper-4-102
+zookeeper-4-103
+
+Problem:
+
+Need a comma separated list of "zookeeper machines" listening on port 9000

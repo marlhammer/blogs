@@ -1,0 +1,18 @@
+Problem: Extract passwords.
+
+Key Point: Using find is extremely powerful, if somewhat rarely used.
+
+Key Point: Home and End (and other movement keys) are very useful.
+
+
+
+email: smouring@cia.net perms: ROOT username: smouring password: 2Hard2_Figure_OUT root password: admin
+email: tneumark@cia.net perms: ROOT,metrics username: tneumark password: DailyMetricsBoy21 created by: cevans
+email: rgimmy@cia.net perms: ROOT last access: 4/2 username: rgimmy password: HeartsJN root password: admin created by: cevans
+email: jborst@cia.net perms: ROOT,useradmin username: jborst password: AlwaysOut created by: emiller
+email: crohr@cia.net perms: ROOT,useradmin username: crohr password: BlurToolsRocks created by: emiller
+email: jpolen@cia.net perms: ROOT,wv_accent last access: 4/1 username: jpolen password: NotMarriedToSister root password: admin
+email: sleberks@cia.net perms: ROOT username: sleberks password: SnowboardersSuck root password: admin
+email: rwitter@cia.net perms: ROOT last access: 3/15 username: rwitter password: NoSleepNow created by: dmacgregor
+email: gherter@cia.net perms: ROOT,schedule username: gherter password: RubyNationBoss root password: admin created by: cevans
+

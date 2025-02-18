@@ -1,0 +1,46 @@
+Raspberry Pi
+-------------------------------------------------------------------------------
+
+
+Raspberry Pi is a hardware platform. Driving an active community of hobbyists and education institutions because of its low cost ($25 to $35), small size, and low power draw. 
+
+It is a general purpose, fully functional, high level computer. It is not a low level microcontroller like an Arduino or Beagle Board. 
+
+Technical specifications:
+
+    CPU (700 MHz to 1 GHz)
+    GPU (HDMI output)
+    256 mb to 512 mb of RAM
+    SD card slot for system storage and OS image
+    
+Raspberry Pi architecture is based on ARM instruction set, and therefore can support any ARM compatible OS. 
+
+Reference (and quite robust!) distribution is "Raspbian" a port of Debian. Can also support other flavors of Linux (ARCH, Fedora), as well as other operating systems (Android ports, Firefox OS ports, XBMC (which is linux based).
+
+Demo:
+
+    Show website.
+    
+    Show how to flash OS.
+    
+    Show setup of Raspberry Pi.
+    
+        - All system settings
+        
+        - Setting up SSH / static IP
+        
+        - PuTTY log in
+        
+        - Install packages
+        
+        - Updated software and OS
+        
+Raspberry Pi bridges the gap between high level and low level programming. Arduinos are great for embedded systems / microcontrollers / low level but lack higher order functions.
+
+Raspberry Pi has GPIO ports.
+
+Quick Python intro.
+
+Demonstration GPIO control with Raspberry Pi.
+
+Mention SSH access via Android / iOS apps.

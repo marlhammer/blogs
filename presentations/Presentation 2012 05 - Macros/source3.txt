@@ -1,0 +1,36 @@
+540-522-9906
+540-522-7995
+703-555-1234
+703-555-4321
+703-555-6789
+703-555-9876
+571-123-5555
+571-456-5555
+571-789-5555
+800-555-1234
+800-555-4321
+800-555-5678
+800-555-8765
+
+
+Problem:
+
+select first_name, last_name from person_data where telephone in
+
+Need them in quotes, comma separated, without hyphens
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Note: Ctrl Ctrl you must learn Ctrl!

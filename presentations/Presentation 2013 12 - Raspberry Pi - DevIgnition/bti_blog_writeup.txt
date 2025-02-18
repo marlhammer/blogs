@@ -1,0 +1,16 @@
+http://www.bti360.com/pages/page.asp?page_id=209977&articleId=43589
+
+02-20-14
+A Piece of Raspberry Pi
+
+Several BTI360 teammates, myself included, attended ‘A Slice of Raspberry Pi’ at the recent DevIgnition conference in Northern Virginia.  So today we wanted to share a piece of Pi with you and talk about what makes this Raspberry Pi so good.
+
+This Raspberry Pi is not from the kitchen, but instead is a bare bones Linux computer built around an ARM processor. An SD card provides the main storage and simply needs to be flashed with an operating system before first use. The board also comes loaded with 512MB RAM, an HDMI out port, separate GPU, USB 2.0 ports, and an ethernet port, to name a few features. The best part is the cost: $25 or $35 depending on the features you want included on the board.
+
+An overview of the Raspberry Pi was given at DevIgnition, followed by a live demo of the board. This board seems to be the perfect bridge between the enterprise software that many BTI360 teammates produce and the world of embedded systems. There are a multitude of libraries and utilities that are already built so that a developer can easily dive in without having to learn the ins and outs of electrical engineering. The Pi also has a camera module available for purchase which gives it the ability to capture still photos or video, again easily accessible through the utilities that have been created for the Pi. For a home project case study, the presenter used the Pi to monitor humidity and temperature of a home mead brewing setup. He simply attached a temperature/humidity sensor to a breadboard and has the Pi dump those numbers out to a Google Drive spreadsheet so that those metrics are graphed and tracked remotely.
+
+During one segment, the speaker provided an example of Python code, which lit LEDs on a breadboard to represent a binary clock.  He then gave us recommendations on how to avoid some common issues with the board. For example, the presenter killed his Python process while the LEDs were cycling, and it left them lit up. To get around this, a developer must include some clean up at the end of their code, so that the state of the electronics that the board is driving is reset. He also talked briefly about power supply issues; even though the Pi is driven off of a USB cable, there is often not enough amperage supplied from a standard computer USB port to keep the Pi and multiple connected peripherals running smoothly.
+
+After the talk, I joined a few other conference attendees in a break room to talk more about the Pi. A few individuals mentioned projects they had previously worked on, to include home automation for turning off lights, home monitoring for basement flooding, developing a disconnected mesh network over wifi adapters, and even building helicopter drones. A quick Google search will also reveal a multitude of other projects that can be driven by this cheap linux machine (such as here).  
+
+The Raspberry Pi, while also a yummy dessert, is a necessary item in the toolbox of any developer interested in making a foray into embedded programming.  Bon appetite!

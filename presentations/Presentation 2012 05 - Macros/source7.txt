@@ -1,0 +1,68 @@
+table person {
+    first_name      string,
+    last_name       string,
+    middle_name     string,
+    ssn             string,
+    height          string,
+    weight          string,
+    is_viking       string,
+    is_pirate       string
+}
+
+Stephen
+Mouring
+Earl
+555-55-5555
+74
+275
+true
+false
+
+John
+Cato
+null
+111-11-1111
+70
+220
+false
+true
+
+Jack
+Sparrow
+null
+222-22-2222
+70
+130
+false
+true
+
+Erik
+Red
+The
+333-33-333
+80
+300
+true
+false
+
+Problem:
+
+Create insert statements: insert into person (...) values (...);
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Note: Do not try to do everything in one macro. Break it down into parts. (Three in this case).

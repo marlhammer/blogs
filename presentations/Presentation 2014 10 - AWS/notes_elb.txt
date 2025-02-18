@@ -1,0 +1,31 @@
+ELB stands for Elastic Load Balancer.
+
+Elastic - Means it can expand and contract dynamically.
+
+Load Balancer - Means it directs traffic from a single entry point to multiple servers behind it.
+
+Not a single server that routes traffic through it (would not scale to 1000 servers now would it?) More like a supervised DNS entry... You ask for DNS Entry X you get back an IP from the pool.
+
+GOTCHA: Stopping and starting an instance is a gotcha... if the ip address changes, the ELB does not recognize the instance any more because the public ip changes... Elastic IPs, strangely, do not seem to help. 
+
+	
+Demo:
+
+Two instances running. Both have Tomcat running serving up a page that identifies each server.
+
+When we are done we should see a page that flip flops between Test 1 and Test 2.
+
+Create Load Balancer. 
+
+    Internal vs External ELB.
+
+    Load Balancer ports vs instance ports
+    
+    Health Check - give it a url that must return an HTTP 200. Watchout for redirects! Got burned by this. It does to follow redirects. Did /helloworld instead of /helloworld/index.jsp
+    
+    Security Groups
+    
+    Add Instances
+    
+    Notes: Health Checks are continuous.
+    

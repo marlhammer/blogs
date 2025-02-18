@@ -1,0 +1,40 @@
+
+<TALKING>
+Raspberry PI is a full on computer. It rocks a 700mhz processor and HD playback supporting GPU. 256 MB of RAM.
+
+Model A ($25) / Model B ($35)
+
+Difference is a Ethernet Port and a second USB port. Both have HDMI and Analog video out, headphone jack, and micro USB power.
+
+Runs various distributions of Linux and other systems flashed to a SD card. Can use "dd" command in Linux / Mac to format SD card or Win32DiskImager for Windows.
+
+Starting out there is a nice distribution of Debian optimized for Raspberry Pi and preconfigured with some development tools (mostly Python based) called "Raspian" or "Wheezy".
+
+Current projects to port XMBC and Android (2.3 and 4.0). Expecting Android release soon (this month?)
+</TALKING>
+
+
+
+<DEMO>
+Boot off board.
+
+Run "sudo raspi-config" and show off new overclocking
+
+Run "startx"
+</DEMO>
+
+
+
+<TALK>
+Prag Prog Book is good. 
+
+www.raspberrypi.org
+
+Can buy cases online or using 3D printers.
+
+http://www.engadget.com/2012/10/16/beer-keyboard-combines-arduino-and-raspberry-pi-and-beer/
+</TALK>
+
+
+</ QUESTIONS?>
+

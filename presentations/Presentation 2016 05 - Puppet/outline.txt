@@ -1,0 +1,70 @@
+Introductions
+
+    Myself
+    Sequoia
+
+What is DevOps?
+
+    Intersection of Software Development / System Operations
+
+    Automation
+    Frameworks
+
+What is Puppet?
+    Explanation
+
+    Why why? (Because its a lot of work and everything has a cost! See my blog!)
+
+    Manual steps do not scale.
+
+    Manual steps are error prone.
+
+    Automation enables new behavior (provisioning servers on the fly.)
+
+    Declarative
+
+    State / Drift
+
+Puppet Concepts
+
+    Resources
+
+    Resource Types
+
+        Resources are lenses through which state is viewed
+
+        Command Line Demo
+
+    Classes
+
+        Declaration
+
+    Nodes
+
+
+
+    Manifests
+
+
+
+    Modules
+
+    Environments
+
+Puppet Concepts Review
+
+Puppet Additional Concepts
+
+    Ordering
+
+Puppet Setup
+
+    Standalone
+
+        Pros/Cons
+
+    Master/Agent
+
+        Pros/Cons
+
+AWS/C2S comments

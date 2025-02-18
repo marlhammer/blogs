@@ -1,0 +1,63 @@
+Introduction to Python
+
+    Taxonomy:
+    
+        Interpreted, but can be compiled (and cross compiled).
+    
+        Dynamic typing.
+    
+        Functional and OO.
+
+    Some unique features:
+    
+        Whitespace sensitive.
+        
+        Split between Python 2 and 3.
+
+Introduction to XPath
+
+    Way of referring to HTML tree elements. Similar to (predecessor of?) CSS selectors.
+
+    Plugin: Control-Shift-X, then Shift
+    
+    Show a few examples on www.google.com
+
+       //input (11 results)
+       //input[@type='text']
+       //input[@value='Google Search']
+       //a[contains(@href, 'youtube')]/text()
+    
+    Show introduction:
+
+        / implies next element
+        // implies ANY next element
+
+        [] for attributes
+
+        Special Operations can be applied values
+        
+        Special "Axes" can be referenced
+        
+        text()
+
+    http://www.w3schools.com/xpath/
+
+    Can return many results or a single result.
+
+Web Scraping:
+
+    Scrapy
+    
+        Items
+        Item Pipelines
+        Spiders
+        
+    Project: CCG Card
+    
+    Project: IMDB 6 Degrees of X
+
+Thoughts on web scraping:
+
+    Controlling it is a problem!
+    
+    General purpose vs specialized trade off.

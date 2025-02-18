@@ -1,0 +1,46 @@
+Problem: I want to generate JSON object with these fields.
+
+JSONObject json = new JSONObject();
+json.add("fname", fname);
+...
+
+Key Point: Copy paste state is maintained within the macro.
+
+Key Point: Doing MOST of the work is good enough. Can decorate with some details (like toString() at the end) later.
+
+
+
+private String fName;
+private String lName;
+private String mName;
+private int age;
+private int weight;
+private String ssn;
+private String telephoneNumber;
+private Color hairColor;
+private Color eyeColor;
+private double bmi;
+private int footsizeMetric;
+private int footsizeEnglish;
+private boolean isTerrorist;
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

@@ -1,0 +1,57 @@
+Clean install:
+
+    raspi-config
+
+        Expand root filesystem
+        
+        RESTART
+
+        Change Local to EN UTF8
+        
+        RESTART 
+        
+        Change Time Zone to America/New York
+        Change Keyboard Layout to EN
+
+        RESTART
+
+        Change Memory Split to 16mb GPU
+    
+        Overclock to High
+    
+        Enable SSH
+    
+        Boot Behavior to Do Not Boot To Desktop
+
+    Change "pi" user password
+    Change "root" user password
+
+    Install vim
+        sudo apt-get install vim-runtime
+        sudo apt-get install vim
+
+    Configure sshd 
+        sudo vi /etc/ssh/sshd_config
+        
+        AllowUsers pi
+        Port 50000
+        PermitRootLogin no
+
+    Setup static IP
+        sudo vi /etc/network/interfaces
+
+        iface eth0 inet static
+        address 192.168.1.<ADDRESS>
+        netmask 255.255.255.0
+        gateway 192.168.1.1
+
+    Install Java
+        sudo apt-get install openjdk-7-jre
+        sudo apt-get install openjdk-7-jdk
+        
+Upgrade:
+
+    Update raspi-config (from GUI)
+    
+    Run sudo apt-get update
+    Run sudo apt-get upgrade

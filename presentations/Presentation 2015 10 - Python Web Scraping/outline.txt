@@ -1,0 +1,39 @@
+Shortened version of chalk talk.
+
+Some technical things we are skipping:
+
+    Python introduction.
+    XPath introduction.
+    Nitty gritty of Scrapy (Python Web Crawling library.)
+
+    See my blog for the technical goodness and if there is interest I can give the full technical chalk talk.
+
+Tackled this project as a representative cross section of different Sequoia projects:
+
+    Web Crawling (OSC work)
+    Python (Data Science work)
+    Neo4J (Big Data work)
+        Kudos to David Swearingen. Neo4J is a "graph" database. Discuss identity resolution.
+    AWS (core capability)
+
+Project would crawl IMDB, alternating ingesting Actors and Movies and build a graph of Actor/Movie relationships.
+
+Web Scraping:
+
+    Scrapy
+
+        Items
+        Item Pipelines
+        Spiders
+
+DEMO code.
+
+DEMO project.
+
+Thoughts on web scraping:
+
+    Pruning and controlling the crawl is a problem! (How to avoid loops!)
+
+    General purpose vs specialized trade off.
+
+Sandbox for people to play with.

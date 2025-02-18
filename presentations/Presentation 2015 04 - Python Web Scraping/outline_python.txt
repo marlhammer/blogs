@@ -1,0 +1,90 @@
+# Dynamic Typing
+x = 5
+print(x)
+print(type(x))
+x = 6.7
+print(x)
+print(type(x))
+
+# Strings
+#
+#    " or ' for strings where " is interpolation
+x = "Hello " + 'world'
+print(x)
+
+# Arrays
+x = ["wild", "attack", "monkeys"]
+print(x)
+print(x[0]) # Zero indexed
+x += ["with"]
+print(x)
+x += "lasers" # Ooops! Type must match!
+print(x)
+
+
+# Methods
+
+#    Cannot be used before they are declared (remember its interpreted).
+#    But can be referenced before they are declared (Remember. Its. Interpreted!)
+calculation(2,4);
+
+def calculation(x,y):
+   z = add(x,y);
+   z *= z;
+   return z;
+
+def add(x,y):
+   return x + y;
+
+x = calculation(2,4);
+print (x);
+
+# Method Overload 
+#
+#   There is none.
+def printMsg():
+    print("Goodbye world!");
+
+def printMsg(x):
+    print("Message: " + x);
+
+printMsg();
+
+printMsg("Terminate 007.");
+
+# Methods are first class citizens. Methods can return methods (closures)
+#
+#
+def generalOrder66(target):
+    def terminateTarget():
+       print("Terminating " + target);
+    return terminateTarget;
+
+t = generalOrder66("Jedi");
+
+t();
+type(t);
+
+
+
+# Object Oriented Python
+#
+#
+class A:
+   name = "A"
+
+   def whoami(self):
+      print self.name
+
+   def test(self):
+      print "Foo"
+     
+class B(A):
+   name = "B"
+
+x = B()
+x.whoami();
+
+# Modules
+
+Can import a file or functions/classes within a file.

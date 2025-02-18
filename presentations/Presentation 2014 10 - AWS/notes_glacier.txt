@@ -1,0 +1,12 @@
+Vaults contain "archives"
+
+Archives are equivalent to files.
+
+Extremely slow retrieval. Extremely cheap storage.
+
+Can store directly or phase things into Glacier.
+
+
+Show Lifecycle rules on S3.
+
+Discuss personal use... Used to be much cheaper than Dropbox... but prices have come done.

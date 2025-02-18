@@ -1,0 +1,21 @@
+Not everything goes in the cloud
+
+    Consider sunk costs
+
+Servers are not sacred (emails from Amazon)
+
+Apps should be stateless or state distributed
+
+    Hierarchy of state distribution
+        Store state client side
+        Use your own cookies
+        Use a databaes
+        Use a distributed cache (ehcache)
+
+    Design for autoscaling
+
+EBS is most familiar, but EXPENSIVE. Lion's share of the cost. Discuss S3 and other options.
+
+Start tagging early and stay faithful. Great way to manage costs.
+
+Use case: Batch on Web

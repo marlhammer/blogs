@@ -1,0 +1,136 @@
+Installing on Raspberry Pi (failed):
+
+    Cannot use latest version!
+
+    sudo apt-get update 
+    sudo apt-get upgrade
+
+    Uninstall existing jre/jdk
+
+    sudo apt-get remove oracle-java7-jdk
+    sudo apt-get remove oracle-java8-jdk
+
+    java command should not work.
+
+    sudo apt-get install openjdk-7-jre
+    sudo apt-get install lsof
+
+    To download: 
+
+        Neo4J Home Page. Downloads. Under Community select "Other Releases". Select Linux/Mac installation under Community column. Start download, find the link. 
+
+    wget -O neo4j.tar.gz 'http://neo4j.com/artifact.php?name=neo4j-community-2.0.4-unix.tar.gz'                      
+    tar xvf neo4j.tar.gz
+    cd neo4j-community-2.0.4
+
+
+    cd conf
+
+    vi neo4j-wrapper.conf
+
+    Uncomment and modify:
+
+    wrapper.java.initmemory=128
+    wrapper.java.maxmemory=128
+
+    Add:
+
+    wrapper.java.additional=-XX:MaxPermSize=64M
+
+    vi neo4j.properties
+
+    Add:
+
+    neostore.nodestore.db.mapped_memory=1M
+    neostore.relationshipstore.db.mapped_memory=1M
+    neostore.propertystore.db.mapped_memory=1M
+    neostore.propertystore.db.strings.mapped_memory=1M
+    neostore.propertystore.db.arrays.mapped_memory=1M
+
+    export NEO4J_HOME=~/neo4j/neo4j-community-2.0.4
+    export PATH=$NEO4J_HOME/bin:$PATH
+
+    neo4j status (All paths working)
+    neo4j start (Start that server)
+
+Installing on AWS:
+
+    wget -O neo4j.tar.gz 'http://neo4j.com/artifact.php?name=neo4j-community-2.0.4-unix.tar.gz'                      
+    tar xvf neo4j.tar.gz
+    cd neo4j-community-2.0.4
+
+    For .bash_profile
+
+        export NEO4J_HOME=/home/ec2-user/neo4j-community-2.2.0
+        export PATH=$NEO4J_HOME/bin:$PATH
+
+
+Python with Neo4J
+
+    sudo pip install py2neo
+
+
+    # graph = Graph() # Local
+
+    from py2neo import Graph
+    from py2neo import Node 
+    from py2neo import Relationship
+    graph = Graph("http://54.148.21.172:7474/db/data") # Remote
+    graph.schema.create_uniqueness_constraint("Person", "id")
+    graph.schema.create_uniqueness_constraint("Film", "id")
+
+    stephen = graph.merge_one("Person", "name", "Stephen Mouring");
+    stephen = graph.merge_one("Person", "name", "Stephen Mouring");
+    stephen = graph.merge_one("Person", "name", "Stephen Mouring");
+    stephen = graph.merge_one("Person", "name", "Stephen Mouring");
+    kathryn = graph.merge_one("Person", "name", "Kathryn Mouring");
+    kathryn = graph.merge_one("Person", "name", "Kathryn Mouring");
+    kathryn = graph.merge_one("Person", "name", "Kathryn Mouring");
+    kathryn = graph.merge_one("Person", "name", "Kathryn Mouring");
+
+    stephen_loves_kathryn = Relationship(stephen, "LOVES", kathryn)
+    graph.create_unique(stephen_loves_kathryn);
+
+    stephen_loves_kathryn2 = Relationship(stephen, "LOVES", kathryn)
+    graph.create_unique(stephen_loves_kathryn2);
+
+    graph.create(stephen);
+    kathryn = Node("Person", name="Kathryn Mouring")
+    graph.create(kathryn);
+    stephen_loves_kathryn = Relationship(stephen, "LOVES", kathryn)
+    graph.create(stephen_loves_kathryn);
+
+    http://www.imdb.com/name/nm0000246/ - Bruce Wilis
+    
+    Neo4J Password: !!!WhatIsTheMatrix!!!
+
+
+Queries:
+
+    MATCH (n)
+    RETURN n;
+
+    MATCH (n)
+    OPTIONAL MATCH (n)-[r]-()
+    DELETE n,r
+
+General Notes:
+
+    Timing delay between item pipeline and crawler... so do not assume items are processed by pipeline and use that for control of crawler.
+
+Installing Scrapy on AWS
+
+    pip preinstalled.
+    
+    sudo yum install libffi-devel
+    
+    sudo yum install libxslt-devel
+
+    sudo yum install gcc
+    
+    sudo yum install openssl-devel
+    
+    sudo pip install Scrapy
+
+    sudo pip install service_identity
+

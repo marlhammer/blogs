@@ -1,0 +1,94 @@
+PREP:
+
+    Setup whiteboard.
+
+    Open GPIO.xlsx and pinlayout_RaspberryPi
+
+    Print these notes
+
+    Print example1.py
+
+    Have shell setup to working directory.
+
+    Verify font sizes of textpad, raspberry pi, and shell are largest.
+
+    Open examples in TextPad.
+    
+    Open NIC email in Firefox.
+
+    Boot raspberry pi and login, cd to right directory.
+
+NOTES:
+
+
+Quick Introduction
+
+Talk today is a medly of Raspberry Pi, GPIO, and Python.
+
+Some people love hearing about new languages. Some people hate it (the usual "I'll never use that why learn it"). 
+
+So I will try to strike a balance and give you just enough Python to follow what I am doing and help you see were Python fits in the language "taxonomy" but not too much to take up precious space in your brain's first level cache.
+
+The motivation for my talk comes from some of the things we did in the last NIC Conference. I've been playing around with Arduino which is a low level, electronic controller and is really cool for doing things like blinking lights, and reading switches, and running motors.
+
+But then I also have this Raspberry Pi (which as you may remember is a fully functional Linux computer with a general purpose CPU, a GPU, RAM, USB ports, network connection, etc.).
+
+I have always view those two things as being vastly different. There is the world of the low level electronic tinkering and LED lights, and then there is the world of high levels.
+
+For a long while too I have been unsure how to delve into electronics. It seemed very complicated, out of reach, and a lot of work to do things with electronics, so I never tried.
+
+My goal with this talk is to show you how easily you can bridge these two worlds together. So I will show you to have a high level thing (Python script) control a low level thing (an LED light). And then vice versa, have a low level input (a switch press) trigger a high level event (send an email).
+
+So first a little python.
+
+<DO PYTHON EXAMPLES ON WINDOWS MACHINE>
+
+Example 1: Open shell and type commands. Note first it is interpreted.
+
+Example 2: Open file and run in shell. Note that function definitions can be deferred, but NOT like Perl! Note that whitespace defines blocks.
+
+Example 3: Open file and run in shell. Note that overloading is NOT allowed. Latest version wins.
+
+<CUT IF RUNNING LOW ON TIME>
+
+Example 4: Open file and run in shell. "Blocks" are first class citizens. Can be returned like a closure. State from wrapping closure is preserved.
+
+Example 5: Open file and run in shell. Use "print(name)" as the example string.
+
+
+
+The meat of what we are doing tonight involves using Raspberry Pi's GPIO pins. There are 26 pins (show them) on the board. Show layout. Some are for raw power and ground. Some are for other communication protocols. Some are reserved for future use. The ones marked GPIO are General Purpose Input/Output. These are what really lets us bridge the high level / low level gap.
+
+These are just like Arduino pins. They can be controlled from software to emit a high or low current (1 or 0, true or false, etc.) or read a high or low current.
+
+<SWITCH TO RASPBERRY PI>
+
+Have a library called RPi GPIO that allows easy control of these pins.
+
+Describe breadboard layout out.
+
+<SKETCH ON WHITE BOARD>
+
+Two circuits on same breadboard.
+
+Circuit 1: GPIO output pin to LED to resistor to ground.
+
+Circuit 2: 5v to switch to grounded GPIO input pin.
+
+Show blink_single.py and run.
+
+Show inout.py and run. 
+
+<IF TIME> Describe wiring switch.
+
+<SWITCH TO WINDOWS MACHINE>
+
+Show email.
+
+In conclusion:
+
+Think about the possiblities. A next logical step is to have a Python script read email through IMAP and flash a warning light.
+
+More exciting, the Raspberry Pi was just updated with a version that has 512mb of RAM. So running a JVM is more feasible now. So your Java expertise ports directly to this now.
+
+Questions?

@@ -1,0 +1,70 @@
+
+Maker movement. Making electronics (or anything) accessible to a broader audience and using those things to create your own projects.
+
+Split talk into two parts, one for Raspberry Pi (less hands on) and one for Arduino (more hands on).
+
+Intro to Raspberry Pi:
+
+    Full computer
+    Runs Linux
+    Cheap!
+    Can do GPIO (fun!)
+    
+Intro to Arduino:
+
+    Microcontroller. Not a full computer.
+    Simple programs (limited memory)
+    Just GPIO, but cheap, light, low power consumption
+    Runs in C
+    We will play with these today!
+
+Overview / Demo of Raspberry Pi:
+
+    Show raspberrypi.org
+    
+    Install OS. (Talk about NOOBS?)
+    
+    Configure OS (Locale and keyboard!)
+    
+    Font size: dpkg-reconfigure console-setup
+
+    Show SSH configuration.
+    
+    Show IP address configuration. (Discuss static IP address!)
+    
+    Show off camera (raspistill -o file.jpg or raspivid -o video.h264)
+    
+    Ask about Python demo / learning?
+    
+    Show off GPIO.
+    
+    Show off Temp/Humidity sensor.
+    
+    Talk about other distributions (XMBC, Arduino, Kali Linux)
+
+        http://docs.kali.org/armel-armhf/install-kali-linux-arm-raspberry-pi
+
+Overview / Demo of Arduino:
+
+    Install software. (http://www.arduino.cc/)
+    
+    Description of the hardware (shields, etc.)
+    
+    Electronics lesson:
+    
+        Power/Ground
+        
+        Resistors
+        
+        Breadboard
+        
+        LEDs
+        
+    Show simple blink
+    
+    Show wired LED
+    
+    Turn them loose (an LED bank, stop light, digit are all valid, analog dim LED!)
+    
+
+    

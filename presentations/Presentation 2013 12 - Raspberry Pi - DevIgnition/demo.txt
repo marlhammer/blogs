@@ -1,0 +1,38 @@
+Show winDiskImager. Talk to DD.
+
+Switch to Raspberry Pi.
+
+    Show raspi-config. (Note: Automatically shown when you have a fresh build.)
+    
+        Expand partition to fill your card.
+        
+        Change keyboard layout / locale from UK to US.
+        
+        Overclocking.
+        
+        Memory split. (Discover xwindows vs command line).
+        
+    If running low on time, reference blog on static IP address.
+
+        Explain DHCP vs static.
+
+        sudo vi /etc/network/interfaces
+
+        iface eth0 inet static
+        address 192.168.1.<ADDRESS>
+        netmask 255.255.255.0
+        gateway 192.168.1.1
+
+        Talk to benefits of static IP.
+        
+    GPIO.
+    
+        Talk about Python. Note similarities between Arduino C code and Python code.
+    
+        Demo blinking lights.
+
+        Talk to humidity sensor. Emphasize high level / low level bridge.
+
+        Demo Raspberry Pi camera. (raspistill -o file.jpg)
+
+        Talk to space / orbital photography.

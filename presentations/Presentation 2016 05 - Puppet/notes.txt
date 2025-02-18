@@ -1,0 +1,281 @@
+
+Resource
+
+    TYPE { TITLE ->
+        ATTRIBUTE
+    }
+
+    Where ATTRIBUTE is a key-value pair.
+
+    Type and Title should be unique per node.
+
+    Quote strings. Use alphanumerics.
+    All attributes end in a comma (including by convention the last one)
+
+Modules
+
+    class MODULE_NAME {
+
+        RESOURCE
+
+        RESOURCE
+
+        ...
+    }
+
+Modules are in a directory structure with a manifests folder (init.pp is the base) and a files folder (if applicable.)
+
+
+OUTLINE:
+
+Puppet manages infrastructure.
+
+Similar to Chef, etc.
+
+Specifies "desired state" not "how to get there".
+
+Nodes "check in" with Puppet Master (default 30 minutes).
+
+When a node is different than desired state this is referred to as "drift".
+
+"Resources" are the fundamental blocks that describe "desired state"
+
+Resources defined by Resource Declaraction
+
+Resource order does not matter (applied simultaneously).
+
+Resource SYNTAX
+
+Resource Abstraction Layer -> Resources are abstract and apply across systems. Resource Types have Resource Providers that implement those types on a specific system.
+
+Resource Types (core):
+
+    Notify
+    File
+    Package
+    Service
+    Exec
+    Cron
+    User
+    Group
+
+Puppet uses Resource to read the state on the node, compare the state with the desired state in the catalog, and then change the node to conform if needed.
+
+puppet resource type title
+
+    Give specific details of that resource.
+
+puppet resource type
+
+    Lists all resources of that type defined.
+
+Resources -> grouped into -> Classes -> grouped into -> Manifests
+
+Manifests can contain additonal logic such as conditionals, etc.
+
+Resources are views into system configuration. So, the "user" resource can list all the users on the system, not just the ones you created.
+
+Resource Types are therefore a thing unto themselves and the resources you put in a manifest are instantiations of that.
+
+Resources can be combined together in classes.
+
+Classes can have optional parameters or "inherits" declaraction.
+
+Defining a class DOES NOT put it in a configuration.
+
+Declaring a class:
+
+    include <CLASS_NAME>
+    class {"<CLASS_NAME>":}
+
+Classes are reusable but can only be used once on a node and can only be declared once.
+
+Node definition can include Classes.
+
+node '<NAME>' {
+    include <CLASS>
+    include <CLASS>
+    include <CLASS>
+}
+
+In agent puppet conf you can set node name:
+
+    certname=ns2.mydomain.com
+    node_name=cert
+
+MANIFESTS
+
+    Contain Nodes, Classes, Resources
+
+    Can include variables and control flows. Such as:
+
+    $rootgroup = $osfamily ? {
+        'Debian'  => 'sudo',
+        'RedHat'  => 'wheel',
+        default   => warning('This distribution is not supported by the Accounts module'),
+    }
+
+    Use it later like:
+
+          user { 'username':
+            ensure      => present,
+            home        => '/home/username',
+            shell       => '/bin/bash',
+            managehome  => true,
+            gid         => 'username',
+            groups      => "$rootgroup",
+            }
+
+    Puppet code outside any node definition will be applied to every node.
+    Puppet code inside a node definition will only be applied to nodes that match that definition.
+
+MODULES
+
+init.pp is special and always contains a class with the same name as the module. It is the starting point for your module. You cannot have a class named init.
+
+Directory structure
+    manifests -> holds manifest files
+    files ->
+    templates ->
+    lib ->
+    facts.d ->
+    examples ->
+    spec ->
+
+    Manifests folder can be namespaced using subdirectories which can be referenced like this:
+
+    <MODULE_NAME>::<SUB DIR>::<MANIFEST NAME>
+
+site.pp is always executed...
+
+ENVIRONMENTS
+
+    Directory structure for organizing configuration.
+
+    Lives in "environments" directory in a directory named after the environment name.
+
+    Contains:
+
+        modules ->
+        manifests ->
+        environment.conf
+
+    Manifests contains the main manfiest / site manifest and the module path (defaults to the environment's "modules" directory.)
+
+    The default value of default_manifest is ./manifests — that is, the environment’s own manifests directory.
+
+
+
+
+WRITING YOUR OWN
+
+ORDERING
+
+    All resources have meta parameters:
+
+        Value is resource reference
+
+        Resource Reference: <TYPE>['<NAME>']
+
+        So: File['foo.bar']
+
+    Before -
+    Require -
+
+        Why two? Consider using libraries! You may only control code before or after.
+
+        Represented by:
+
+        <REFERENCE> -> <REFERENCE>
+
+    Notify -
+    Subscribe -
+
+        Same as above but with concept of "refreshing" the referrer.
+
+        <REFERENCE> ~> <REFERENCE>
+
+
+USING PUPPET
+
+    Starting point (site manifest or main manifest) is either:
+
+    site.pp
+
+    or
+
+    the merged results of a given directory.
+
+    Puppet has a module path that determines where it should look for modules.
+
+    Puppet Master:
+
+        Node checks in with node name and environment.
+        PM takes the main manifest for that environment and evaluates it.
+            Applies any matching node definitions.
+            Applies any standalone resource or class declarations.
+
+    Puppet Apply:
+
+        Acts as PM and Agent and forcibly applies the Manifest given to it (which follows same node / resource / class rules as above.)
+
+    Nodes are assigned to environments using their agent configuration or an External Node Classifer (ENC) such as LDAP or a call to exec.
+
+    Agents need to be registered with puppet master. Agents need to be installed and configured outside of puppet.
+
+    Good example:
+
+    https://www.linode.com/docs/applications/puppet/set-up-puppet-master-agent
+
+
+    Testing:
+
+        puppet apply --noop init.pp
+
+
+    Two architecture types:
+
+        Puppet Master
+
+        Standalone
+
+            Schedule/cron running of puppet apply
+            Cons: More CPU / no centralized control of configuration
+            Pros: No central server needed
+
+
+PUPPET AND AWS:
+
+    Autosign.conf
+
+        Can autosign the requests.
+
+        How do I control hostnames?
+
+    Need to put /etc/hosts file that maps "puppet" to puppet master (or change puppet conf to point to different server)
+
+
+
+
+
+
+
+
+
+
+
+Examples:
+
+ssh 10.0.16.171
+
+puppet agent --test --trace
+
+node "ip-10-0-16-171.us-west-2.compute.internal" {
+
+  file { '/home/centos/hello.txt':
+    owner => centos,
+    group => users,
+    mode => 755,
+    content => 'Puppet was here.',
+  }
+}

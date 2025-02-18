@@ -1,0 +1,29 @@
+http://52.89.18.243:7474/browser/
+
+
+
+MATCH (n)
+RETURN n;
+
+
+
+
+
+MATCH (n)
+OPTIONAL MATCH (n)-[r]-()
+DELETE n,r;
+
+
+
+
+
+scrapy crawl imdb
+
+
+
+
+MATCH (n)
+RETURN n;
+
+
+

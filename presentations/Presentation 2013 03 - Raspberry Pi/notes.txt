@@ -1,0 +1,27 @@
+Python
+
+    Interpreted not compiled
+
+    Dynamically Typed
+
+    Object Oriented (can do Functional too)
+
+    Whitespace determines blocks.
+
+    Functions not evaluated until they are executed.
+
+Raspberry Pi
+
+    http://www.raspberrypi.org/archives/1417
+
+    Had to run: sudo apt-get install python-dev
+
+Issues:
+
+    Keyboard reconfigure: sudo dpkg-reconfigure keyboard-configuration
+    
+    Installed VIM: (sudo apt-get update, sudo apt-get vim-runtime, sudo apt-get vim)
+
+    Use resistors on inputs between them an ground, otherwise you have nothing anchoring the voltage
+    
+    Font size: dpkg-reconfigure console-setup

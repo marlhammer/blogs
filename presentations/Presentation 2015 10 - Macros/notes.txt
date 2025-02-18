@@ -1,0 +1,23 @@
+
+
+Going to use TextPad (because its AWESOME) and also best combination of simple and robust. It is also available in the environments we support.
+
+The ideas transcend the tool.
+
+The ideas transcend the technology you work with or your role.
+
+Java/Ruby/Python
+
+Developer/Tester/Systems Engineer/Systems Integrator
+
+Whatever.
+
+You will have times when you to transform text from one form to another.
+
+Macros are a POWERFUL way to save yourself some work.
+
+Anytime you are typing somehting repetitively, you should try to use a macro instead. It may take the same amount of time (the first few times you do it) but it is better for your brain.
+
+Following examples are all drawn from my personal experience.
+
+Macros are just replayed keystrokes.
