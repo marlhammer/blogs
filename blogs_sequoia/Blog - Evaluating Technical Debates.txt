@@ -1,0 +1,113 @@
+<p><em>This is intended as a &quot;my thoughts on this topic&quot; blog, not as an exhaustive scientific essay on software development and human nature. This is a rant post. Take it or leave it and share your thoughts in the comments!</em></p>
+
+<p>As software developers, you are likely to (frequently) be in, around, or responsible for technical debates. These range from &quot;that Python guy&quot; telling you (for the hundredth time) that Python in better than Java, to an extended argument across the team about whether or not to use Lucene or Oracle Text to index textual data. (Pro Tip: Use Lucene. Argument over.)</p>
+
+<p>Brief side trip to the philosophical and nostalgic...</p>
+
+<p>A few months ago I was thinking about how my view of the world changed as I got older. (Having your own children does that to&nbsp;you...) As a child, I viewed each &quot;thing&quot; (concrete things like new foods or abstract things like arguments, positions, beliefs) in life as unique. I had a naivety about the world and as I encountered &quot;things&quot; each one felt novel and new.</p>
+
+<p>As I grew up, that naivety was replaced with an increased ability to abstract out patterns. I gradually realized that most things in the world repeat themselves in predictable ways. Some (not all) uniqueness of individual things was lost and increasingly encountering a new thing became a matter of identifying where it fit in my taxonomy of concepts.</p>
+
+<p>I find this vaguely depressing (I like exploring new things and its hard to keep finding new things to explore), but I have found that these abstractions and the ability to put things into a taxonomy makes several areas of life much easier and more productive.</p>
+
+<p>For example, learning a new programming language used to seem like a forbiddingly steep investment (which is true when you spent all your time heretofore learning the one language you know). Now that I have been exposed to more things, the learning curve for a new language is lessened. (Oh! That&#39;s a functional dynamic language... I know what that is like conceptually, now I just need to learn some syntax.)</p>
+
+<p>Back to the topic at hand...</p>
+
+<p>The inspiration for this blog came from reading Amazon reviews. After reading hundreds of reviews on a wide assortment of different products I was considering buying, I realized that Amazon reviews (especially negative ones) can be binned into groups:</p>
+
+<p>(1) This person had a bad shipping experience but the product is OK.</p>
+
+<p>(2) This person was one of the 1/100% that was shipped a defective product.</p>
+
+<p>(3) This person did not understand the product and is made because their misconceptions do not apply.</p>
+
+<p>(4) This person is a psycho, we should send the Police their address.</p>
+
+<p>And so on...</p>
+
+<p>I realized that the some logic could be applied to many different technical arguments I have encountered in my professional experience. Many arguments fall into one of several patterns (often with a defining flaw in reasoning). Being able to quickly identify which pattern an argument is falling into can aid a swift resolution to the argument, instead of just bashing back and forth over the topic.</p>
+
+<p>This blog is my attempt to highlight a couple &quot;bins&quot; into which arguments can be put and try to indicate what I believe the underlying flaw is. My hope is that it can expand or sharpen your internal taxonomy and help you be more productive in future technical debates.</p>
+
+<p>&nbsp;</p>
+
+<p><strong>Good Examples Do Not A Rule Make</strong></p>
+
+<p>Example:</p>
+
+<p>&quot;Ruby on Rails is a better programming language than Java because you can get up and running with a CRUD webapp in minutes instead of hours!&quot;</p>
+
+<p>This was the first one that comes to mind, and I come across this a lot.</p>
+
+<p>There is a theorem in Statistics&nbsp;called the No Free Lunch Theorem which basically states that no algorithm is universally optimal over all inputs. Every algorithm has some inputs that it performs better with, and some it performs worse with. All algorithms average to the same performance. (Sorry to the Statistics/Probability crowd if I butchered that... It has been a while since college...)</p>
+
+<p>The flaw here is the assumption that because some thing (a language, a framework, a paradigm, whatever) excels in one area it is therefore better than its competitors. We easily ignore or downplay the adage &quot;the right tool for the right job&quot; while we are championing&nbsp;our chosen technology.&nbsp;</p>
+
+<p>Ruby on Rails is really good for CRUD webapps, but how does it do in embedded microcontrollers? Or big data applications traversing trillions of rows? C may not ideal for many things (especially web development), but it does <em>really well </em>in graphics processing!</p>
+
+<p>It can be easy to fall in love with a particular technology (especially if that technology excels in a use case that is valuable to us). The important thing is to stay focused on the <em>use case</em>, not the <em>technology</em>. Promote and champion your technology <em>for the use cases it excels in</em>, and always be open and accepting of other technologies for other use cases.</p>
+
+<p>A corollary to this is that we often&nbsp;assume that the use cases we have are the most prevalent. Web developers assume most people do web development and therefore other use cases are insignificant. I see this often happen in an argument:</p>
+
+<p>&quot;Ruby on Rails is the best!&quot;</p>
+
+<p>&quot;Only for web development, what about microcontrollers?&quot;</p>
+
+<p>*look of annoyance* &quot;Well sure, whatever, but those are just edge cases!&quot;</p>
+
+<p>They are only edge cases because you are a web developer. Not because the percentage of people doing non-web development is insignificant.</p>
+
+<p>&nbsp;</p>
+
+<p><strong>Bad Examples Do Not A Rule Make</strong></p>
+
+<p>Example:</p>
+
+<p>&quot;Java Swing is horrible! All those extra variables, nested JPanels, and GridBagLayout makes it hard to read and harder to maintain! Java Swing is just awful!&quot;</p>
+
+<p>We often judge a technology the examples and applications of it we see. This is often a relatively reasonable thing to do, but it can be hard to separate&nbsp;things that are&nbsp;<em>intrinsic</em>&nbsp;flaws of the technology for things that are just poor applications.</p>
+
+<p>Swing is a great example. Most of the Swing I have encountered has been atrocious. Absolutely&nbsp;<em>atrocious.</em>&nbsp;Hundreds of intermediate variables with confused nested relationships and poorly factored, redundant code all over the place.&nbsp;</p>
+
+<p>In most cases though, after some aggressive refactoring, I believe that Swing code can be changed into simple, relatively elegant, DRY code that performs a useful (if rare in our web dominated age) function. (See <a href="http://blogs.sequoiainc.com/blogs/java-swing-wrangling-your-components">this blog post</a> for some ideas on organizing your Swing code better.)</p>
+
+<p>When someone criticizes a technology, try as much as possible to sift the criticism and see if it is really an intrinsic criticism of the technology (ex., Swing is bad because it is not extensible) or just a criticism of the examples you have seen (ex., Swing is bad because it is not DRY.)</p>
+
+<p>&nbsp;</p>
+
+<p><strong>Ignoring the Cost in Cost/Benefit</strong></p>
+
+<p>Example:</p>
+
+<p>&quot;Lisp is the best language! I wrote a complete C compiler in 39 lines of Lisp code!&quot;</p>
+
+<p>(True story... I had a professor actually say this to me.)</p>
+
+<p>Problem with the above statement? Great, you have a C compiler in 39 lines... Is it readable? By <em>anyone</em>? At <em>all</em>? Including you? Like, tomorrow? Didn&#39;t think so.</p>
+
+<p>Brevity and conciseness are good attributes with good benefits. But so is readability. (I think that is actually one of the hardest decisions when refactoring... when should you <em>allow</em> some duplication or less than ideal factoring because it dramatically improves readability?)</p>
+
+<p>In a lot of technical arguments I see people promoting a technology based on one or more benefits it provides, but they either ignore or dismiss the <em>cost</em> of that benefit. When we are defending a technology (or anything really) our mind instinctively downplays the negatives of the thing we are defending. It feels like admitting weakness or even defeat to concede that our favored technology has a flaw or a cost.</p>
+
+<p>Ignoring that instinct in ourselves and identifying it in others goes a long way towards better evaluating a technology for a given use case.</p>
+
+<p>A corollary to this is ignoring either sunk cost in an existing solution or missed opportunity cost in a new solution. A new technology might be a great solution to a problem you have, but how much time and effort did you put into the existing, less optimal solution? Does the good gained from reimplementing the new technology outweigh the investment you have already made with the existing technology?</p>
+
+<p>Opportunity cost is another important concept. Maybe implementing a new technology would help you solve an existing problem. But how long will implementing that solution take? What other things will you be unable to do because you will be busy implementing the new solution? Sometimes doing good in one area prevents you from doing&nbsp;<em>more</em>&nbsp;good in another area.</p>
+
+<p>&nbsp;</p>
+
+<p><strong>Referencing The Ideal State (aka the 80/20 Problem)</strong></p>
+
+<p>Example:</p>
+
+<p>&quot;Python is incredibly easy and simple, and makes simple CRUD apps a breeze!&quot;</p>
+
+<p>I agree that CRUD apps are a breeze in Python... When was the last&nbsp;time you worked on a simple CRUD app? I don&#39;t know about you, but every application I have worked on has had at least some, if not many, deviations from the clean CRUD model. There are special cases, complex business logic, and nagging performance issues, in every application I have seen.</p>
+
+<p>The old adage that &quot;80 percent of the work is in the last 20 percent of the application&quot; is an old adage for a reason. Yet it is frequently ignored when discussion technology. We are often content with using the simplest case to argue the merits of a technology and ignore or abstract away&nbsp;the hard cases (which comprise the majority of use cases in reality).</p>
+
+<p>&nbsp;</p>
+
+<p>That is all I have at the moment, although if any other common patterns come to mind (or surface in the comments) I will update this article with those. Questions? Comments? Agree? Disagree? Comment below or email me at: smouring@sequoiainc.com.</p>

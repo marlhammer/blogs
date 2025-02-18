@@ -1,0 +1,229 @@
+<h3><em>Introduction</em></h3>
+
+<p>Paranoia. It is a condition I live with when it comes to backing up my data. Almost every aspect of my life has a digital footprint of some size, and with so much invested in my digital trove, I go to great lengths to protect it.</p>
+
+<p>I have one primary hard drive, which is the master copy and is in a military specification waterproof and drop resistant housing. Mirrored frequently from that are two backup&nbsp;drives, also in military specification waterproof and drop resistant housing, which&nbsp;are stored in a 1 hour rated fireproof and waterproof safe inside my house.&nbsp;Mirrored quarterly from that&nbsp;is a third backup drive, stored in a portable fireproof safe at an&nbsp;offsite location.</p>
+
+<p>Needless to say, I still feel <em>very</em> exposed and am&nbsp;always looking for additional protection!</p>
+
+<p>&nbsp;</p>
+
+<h3><em>A Little About Glacier</em></h3>
+
+<p>As soon as I read about Amazon Glacier, I was immediately intrigued. Glacier is an archival data store provided by Amazon, designed to store large amounts of data, very inexpensively, in an extremely redundant, durable way. The major&nbsp;caveat is that it can take a long time (4-5 hours) to retrieve your data&nbsp;once it is archived. When one is considering the prospect of&nbsp;restoring one&#39;s entire digital life however, that seems like a minor&nbsp;limitation...</p>
+
+<p>Amazon advertises &quot;eleven nines&quot; of durability. That is a 99.99999999999% chance that your data will be safe after a year which is very impressive. In addition to the durability of its data store, Glacier also utilizes checksumming to preserve file integrity. Much like file systems that use checksumming (such as ZFS on Linux) this protects your files from &quot;bitrot&quot; and other phenomena that could cause file corruption even in a durable system.&nbsp;</p>
+
+<p>Glacier is very inexpensive, at least compared to other cloud personal backup solutions. At only $0.01 per GB per month, my entire holdings cost me a mere $5 a month. Compared to other services that are charging an average of $10 a month for a mere 100 GB this is very attractive.</p>
+
+<p>Glacier organizes data into vaults and archives. A vault is a collection of archives and is intended to organize your data at a very high level. An archive is equivalent to a single file. If you need to restore your data you can request individual archives and do not need to restore the entire vault at once.</p>
+
+<p>A very common use case for Glacier is to store legacy data that does not need to be accessed (frequently at least) but must be stored regardless. For example, old log files, prior year financial records, and so forth.</p>
+
+<p>S3 and Glacier can work closely together through the use of Lifecycle Policies, allowing you to automatically&nbsp;migrate objects directly from S3 into Glacier based on certain conditions. As such, Glacier is not really optimized for the end user. It is really intended as a system service.</p>
+
+<p>But that has never stopped you before, now has it?&nbsp;So how <em>do </em>you use Amazon Glacier for personal backups?&nbsp;</p>
+
+<p>There are two approaches, one simple, the other more advanced.</p>
+
+<p>&nbsp;</p>
+
+<p><em>Create a Vault</em></p>
+
+<p>Before you send any data to Glacier you need to create a vault. This is quite simple. Go to the Management Console. Click on the Glacier icon to go to the Glacier console. From here, on the upper left, there is a Create Vault button. All you need to do is provide a name and your vault will be created.</p>
+
+<p>Like most other things in AWS, Glacier vaults reside in a specific Region. Migrating data from S3 to Glacier within the same Region is free. But if you migrate data across Regions there is an additional surchage.</p>
+
+<p>Now, on to using Glacier for personal backups!</p>
+
+<p>&nbsp;</p>
+
+<p><em>Backups: Third Party GUI</em></p>
+
+<p>Amazon does not provide a robust GUI interface for Amazon Glacier. After all... That is not what they really inteneded it for. But there are a host of enterprising individuals who have used the Amazon APIs to create excellent third party clients. There are several to choose from:</p>
+
+<ul>
+    <li><a href="http://fastglacier.com/">FastGlacier</a></li>
+    <li><a href="http://simpleglacieruploader.brianmcmichael.com/">GlacierUploader</a></li>
+    <li><a href="http://www.cloudberrylab.com/free-amazon-s3-explorer-cloudfront-IAM.aspx">S3Explorer</a></li>
+    <li><a href="http://www.cloudberrylab.com/amazon-s3-microsoft-azure-google-storage-online-backup.aspx">CloudBerry Backup</a></li>
+</ul>
+
+<p>My personal preference is <a href="http://fastglacier.com/">FastGlacier</a>.&nbsp;</p>
+
+<p><em>NOTE: FastGlacier is Windows-only which may be too limiting for some people. I no longer have a Mac, but I am told that CloudBerry Backup is the Mac user&#39;s client of choice.</em></p>
+
+<p>Setting up your client, will of course vary based on which you choose. FastGlacier prompts you to create an account in which you store your Amazon Security Credentials. (See my <a href="http://blogs.sequoiainc.com/blogs/aws-getting-started-with-java-and-aws">first AWS blog</a> for my information on retrieving these.) These credentials will be used to list your vaults and the archives they contain, and also handle uploading files for you.</p>
+
+<p>That is really all there is to it. The third party tooling has made accessing Glacier quite easy and for many people they will more than meet your needs!</p>
+
+<p>&nbsp;</p>
+
+<p><em>Backups: Java API</em></p>
+
+<p>If you want a real challenge though, you can create your own client using the Java API. Under the covers, all third party clients are using the Amazon API, so any functionality you see in a third party application can be implemented by you as well.</p>
+
+<p>There are two methods for uploading files in Glacier: file at a time and multipart. File at a time is the simplest, so we will look at that first. Below is the relevant code:</p>
+
+<p>&nbsp;</p>
+
+<div style="background:#eee; border:1px solid #ccc; padding:5px 10px"><tt>AmazonGlacierClient client = new AmazonGlacierClient(new ClasspathPropertiesFileCredentialsProvider());</tt></div>
+
+<div style="background:#eee; border:1px solid #ccc; padding:5px 10px"><tt>client.setRegion(Region.getRegion(Regions.US_WEST_2));</tt></div>
+
+<div style="background:#eee; border:1px solid #ccc; padding:5px 10px"><tt>ArchiveTransferManager atm = new ArchiveTransferManager(client, new ClasspathPropertiesFileCredentialsProvider());</tt></div>
+
+<div style="background:#eee; border:1px solid #ccc; padding:5px 10px"><tt>UploadResult result = atm.upload(<br />
+&nbsp; &nbsp; &quot;&lt;YOUR VAULT NAME HERE&gt;&quot;,<br />
+&nbsp; &nbsp; &quot;&lt;YOUR FILE NAME HERE&gt;&quot;,<br />
+&nbsp; &nbsp; new File(&quot;&lt;YOUR FILE NAME HERE&gt;</tt><tt>&quot;)<br />
+);</tt></div>
+
+<p><em>NOTE: Code can be downloaded from GitHub&nbsp;<a href="https://gist.github.com/marlhammer/12fd3ddb772a161235bd">here</a>.</em></p>
+
+<p>&nbsp;</p>
+
+<p>As always with AWS, the first thing you do is create a client object for the AWS service you are using (<tt>AmazonGlacierClient</tt> in this case.) You should set the Region appropriate for you as well. As with <a href="http://blogs.sequoiainc.com/blogs/aws-getting-started-with-java-and-aws">here</a> we are using the <tt>ClasspathPropertiesFileCredentialsProvider</tt> which expects an <tt>AwsCredentials.properties</tt> file with your Security Credentials.</p>
+
+<p>The API provides a high level <tt>ArchiveTransferManager</tt> that allows you to post a file in a single request. Simply call the <tt>upload()</tt> method with your vault name, archive name, and the file you wish to upload and you are done!</p>
+
+<p>This is all well and good until we try to upload a large file (such as a massive TrueCrypt encrypted file container...) A large sized file is much more likely to fail in the middle of the upload and may not be able to be efficiently uploaded depending on your hardware setup.</p>
+
+<p>As a result Amazon provides an API for doing multipart upload. This allows you to break a file up into parts and upload each part separately. This allows you to recover from a failure and resume uploading where you left off. Depending on your architecture you may also be able to be to achieve higher throughput by parallelizing uploads.</p>
+
+<p>Multipart uploading is a little more difficult. First, there is a lifecycle:</p>
+
+<ol>
+    <li>Request a multipart upload and get an <em>upload id</em> to correlate parts to one another.</li>
+    <li>Upload each part</li>
+    <li>Request a completion of the multipart upload.</li>
+</ol>
+
+<p>This makes the code somewhat more complicated. Second, recall that Amazon Glacier uses checksumming to preserve file integrity. When you upload a single file, such as in the prior example, Amazon computes the checksum and sends it with the file. When you are doing a multipart upload however, you need to provide the aggregate checksum for all the parts. You also need to provide an indication to Amazon of the ordering of the parts so it can reassemble the file correctly.</p>
+
+<p>The source code for the following code is available <a href="https://gist.github.com/marlhammer/381c4284ab9968902de6">here</a>. We will analyze it in sections:</p>
+
+<p>&nbsp;</p>
+
+<div style="background:#eee; border:1px solid #ccc; padding:5px 10px"><tt>AmazonGlacierClient client = new AmazonGlacierClient(new ClasspathPropertiesFileCredentialsProvider());</tt></div>
+
+<div style="background:#eee; border:1px solid #ccc; padding:5px 10px"><tt>client.setRegion(Region.getRegion(Regions.US_WEST_2));</tt></div>
+
+<p>&nbsp;</p>
+
+<p>As before, we first create the Glacier client, use classpath properties file security credentials,&nbsp;and configure it with the correct Region.</p>
+
+<p>&nbsp;</p>
+
+<div style="background:#eee; border:1px solid #ccc; padding:5px 10px"><tt>String fileName = &quot;&lt;YOUR FILE NAME&gt;&quot;;</tt></div>
+
+<div style="background:#eee; border:1px solid #ccc; padding:5px 10px"><tt>File file = new File(fileName);</tt></div>
+
+<div style="background:#eee; border:1px solid #ccc; padding:5px 10px"><tt>// Request a multipart upload.<br />
+InitiateMultipartUploadRequest initiateRequest = new InitiateMultipartUploadRequest()<br />
+&nbsp; &nbsp; .withVaultName(&quot;&lt;YOUR VAULT NAME&gt;&quot;)<br />
+&nbsp; &nbsp; .withArchiveDescription(fileName)<br />
+&nbsp; &nbsp; .withPartSize(&quot;&quot; + partSize);</tt></div>
+
+<div style="background:#eee; border:1px solid #ccc; padding:5px 10px"><tt>InitiateMultipartUploadResult initiateResult = client.initiateMultipartUpload(initiateRequest);</tt></div>
+
+<div style="background:#eee; border:1px solid #ccc; padding:5px 10px">
+<p><tt>// Get an upload id that is used to tie each upload part together<br />
+String uploadId = initiateResult.getUploadId();</tt></p>
+</div>
+
+<p>&nbsp;</p>
+
+<p>Next we create a request to initiate the multipart upload. This notifies Glacier that a multipart upload is incoming and</p>
+
+<p>Glacier responds with the upload id which you will use to unite each subsequent part of the upload.</p>
+
+<p>&nbsp;</p>
+
+<div style="background:#eee; border:1px solid #ccc; padding:5px 10px"><tt>// Upload each part and collect final checksum.</tt></div>
+
+<div style="background:#eee; border:1px solid #ccc; padding:5px 10px"><tt>String checksum = uploadParts(client, file, uploadId);</tt></div>
+
+<p>&nbsp;</p>
+
+<p>The logic to upload each part is sufficiently complex that I pulled it into a separate method. We will revisit it momentarily. For now, note that the <tt>uploadParts()</tt> method returns a checksum for the <em>entire file </em>that will be used below.</p>
+
+<p>&nbsp;</p>
+
+<div style="background:#eee; border:1px solid #ccc; padding:5px 10px"><tt>// Conclude the multipart upload.<br />
+CompleteMultipartUploadRequest completeRequest = new CompleteMultipartUploadRequest()<br />
+&nbsp; &nbsp; .withVaultName(&quot;&lt;YOUR VAULT NAME&gt;&quot;)<br />
+&nbsp; &nbsp; .withUploadId(uploadId)<br />
+&nbsp; &nbsp; .withChecksum(checksum)<br />
+&nbsp; &nbsp; .withArchiveSize(String.valueOf(file.length()));</tt></div>
+
+<div style="background:#eee; border:1px solid #ccc; padding:5px 10px"><tt>CompleteMultipartUploadResult completeResult = client.completeMultipartUpload(completeRequest);</tt></div>
+
+<p>&nbsp;</p>
+
+<p>We conclude by creating a request to complete the multipart upload. This signals Glacier to reassemble and then commit the file.</p>
+
+<p>Now back to uploading each part.</p>
+
+<p>&nbsp;</p>
+
+<div style="background:#eee; border:1px solid #ccc; padding:5px 10px"><tt>private static String uploadParts(AmazonGlacierClient client, File upload, String uploadId) throws Exception {<br />
+&nbsp;&nbsp; &nbsp;int pos = 0;</tt></div>
+
+<div style="background:#eee; border:1px solid #ccc; padding:5px 10px"><tt>&nbsp;&nbsp; &nbsp;int bytesRead = 0;</tt></div>
+
+<div style="background:#eee; border:1px solid #ccc; padding:5px 10px"><tt>&nbsp;&nbsp; &nbsp;FileInputStream uploadStream = new FileInputStream(upload);</tt></div>
+
+<div style="background:#eee; border:1px solid #ccc; padding:5px 10px"><tt>&nbsp;&nbsp; &nbsp;byte[] uploadBuffer = new byte[partSize];</tt></div>
+
+<div style="background:#eee; border:1px solid #ccc; padding:5px 10px"><tt>&nbsp;&nbsp; &nbsp;List&lt;byte[]&gt; partChecksums = new ArrayList&lt;byte[]&gt;();</tt></div>
+
+<div style="background:#eee; border:1px solid #ccc; padding:5px 10px"><tt>&nbsp;&nbsp; &nbsp;while(pos &lt; upload.length()) {<br />
+&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;bytesRead = uploadStream.read(uploadBuffer, 0, uploadBuffer.length);<br />
+&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;if (bytesRead == -1) { break; }</tt></div>
+
+<div style="background:#eee; border:1px solid #ccc; padding:5px 10px"><tt>&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;byte[] part = Arrays.copyOf(uploadBuffer, bytesRead);<br />
+&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;String partChecksum = TreeHashGenerator.calculateTreeHash(new ByteArrayInputStream(part));</tt></div>
+
+<div style="background:#eee; border:1px solid #ccc; padding:5px 10px"><tt>&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;partChecksums.add(BinaryUtils.fromHex(partChecksum));</tt></div>
+
+<div style="background:#eee; border:1px solid #ccc; padding:5px 10px"><tt>&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;UploadMultipartPartRequest partRequest = new UploadMultipartPartRequest()<br />
+&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;.withVaultName(&quot;&lt;YOUR VAULT NAME&gt;&quot;)<br />
+&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;.withBody(new ByteArrayInputStream(part))<br />
+&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;.withChecksum(partChecksum)<br />
+&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;.withRange(String.format(&quot;bytes %s-%s/*&quot;, pos, pos + bytesRead - 1)) // This is a standard format defined by a Java RFC.<br />
+&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;.withUploadId(uploadId);</tt></div>
+
+<div style="background:#eee; border:1px solid #ccc; padding:5px 10px"><tt>&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;System.out.print(&quot;Upload: &quot;);</tt></div>
+
+<div style="background:#eee; border:1px solid #ccc; padding:5px 10px"><tt>&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;client.uploadMultipartPart(partRequest);</tt></div>
+
+<div style="background:#eee; border:1px solid #ccc; padding:5px 10px"><tt>&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;System.out.println(&quot;SUCCEEDED! (pos = &quot; + pos + &quot;)&quot;);</tt></div>
+
+<div style="background:#eee; border:1px solid #ccc; padding:5px 10px"><tt>&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;pos = pos + bytesRead;<br />
+&nbsp;&nbsp; &nbsp;}</tt></div>
+
+<div style="background:#eee; border:1px solid #ccc; padding:5px 10px"><tt>&nbsp;&nbsp; &nbsp;return TreeHashGenerator.calculateTreeHash(partChecksums);<br />
+}</tt></div>
+
+<p>&nbsp;</p>
+
+<p>A lot is going on there, so we will take it one step at a time.</p>
+
+<p>The first several lines are just setup. The real logic starts with the while loop. A fixed number of bytes is read from the file. Each part can be as large as 4 GB, and Glacier allows a maximum of 10000 parts per multipart upload.</p>
+
+<p>This code uses a default part size of 1 MB (1024 bytes times 1024) however, which means it artificial lowers the maximum file size. Depending on your needs you can change the part size to whatever you need (as long as it is below 4 GB.)</p>
+
+<p>After the part is read, a checksum is calculated for that part and stored in a list of part checksums.</p>
+
+<p>Next, a part upload request is made to Glacier. In that request you specify the vault name, the bytes of the part, the checksum, the range (discussed below), and the upload id. The upload id unites all the part uploads in Glacier so Glacier knows all those parts belong together.</p>
+
+<p>The range is specified in a standard Java format and indicates to Glacier what byte range this part contains. This allows Glacier to reassemble the parts into a single file before committing the file to Glacier.</p>
+
+<p>Once the loop completes, a single checksum is calculated from all the part checksums. This checksum is returned, and is sent along with the complete multipart upload request.</p>
+
+<p>And that is all there is!</p>
+
+<p>&nbsp;</p>
+
+<p>Questions? Comments? Email me at: smouring@sequoiainc.com!</p>

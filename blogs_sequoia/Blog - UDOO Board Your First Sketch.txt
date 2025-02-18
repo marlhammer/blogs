@@ -1,0 +1,222 @@
+<p>My first exposure&nbsp;to Kickstarter was seeing the <a href="http://udoo.org">UDOO Board</a>&nbsp;project. (Talk about a good first impression!) At the time I was not able to back&nbsp;the project, but I have been eyeing it with envy ever since!&nbsp;Advertised as the power of four Raspberry Pis and an Arduino Due in one board, it makes quite the promise!</p>
+
+<p>One of the main reasons technology like&nbsp;the Raspberry Pi is attractive is because it provides not only a high level Linux environment that is more accessible and flexible than an Arduino, but also&nbsp;still gives&nbsp;access to low&nbsp;level world of electronics through a GPIO interface.&nbsp;However, while&nbsp;the Raspberry Pi provides that GPIO interface, its number of pins can be a limiting factor, and the&nbsp;lack compatibility with the Arduino community&#39;s extensive&nbsp;collection of shields and expansion boards can be restricting.&nbsp;</p>
+
+<p>UDOO is an attempt to change that! It provides the high level computing platform of either Linux or Android, combined with a fully pin compatible Arduino experience.&nbsp;</p>
+
+<p>So let&#39;s dive in and experience the UDOO board from first setup all the way to running an Arduino sketch!</p>
+
+<p>&nbsp;</p>
+
+<p><strong>Setting Up</strong></p>
+
+<p>UDOO does a good job of making the setup process very streamlined.&nbsp;Like the Raspberry Pi, the UDOO&#39;s OS is flashed to an SD card. Available OS&#39;s include a version of Ubuntu as well as Android 4.3. There are also several unofficial OS&#39;s including a version of Debian (familiar to those Raspberry Pi folks among you!) and XMBC. Downloads can be found <a href="http://www.udoo.org/downloads/">here</a>.</p>
+
+<p><em>NOTE: Important! On Windows&nbsp;you <strong>absolutely</strong> must unzip the OS images using 7zip. The native windows unzip utility either thinks the OS images are corrupt or are several hundred petabytes in size. I downloaded the OS image three times before figuring this out...</em></p>
+
+<p>Once downloaded and extracted, the OS image can be flashed to an SD card using <a href="http://www.udoo.org/getting-started/creating-a-bootable-micro-sd-card-from-image/">these instructions</a>.</p>
+
+<p>Insert the SD card into your UDOO and attach it to a display, power source, and a network cable. Congratulations! You are ready to get started!</p>
+
+<p><em>NOTE: In the latest default Ubuntu distribution there is a &quot;UDOO Configuration&quot; shortcut on the Desktop GUI. It is very similar to the Raspberry Pi&#39;s <tt>raspi-config</tt> tool. I recommend running that and reviewing it to see if there are any options you want to change!</em></p>
+
+<p>&nbsp;</p>
+
+<p><strong>Static IP</strong></p>
+
+<p>The first thing I like to do with my Linux powered electronics is enable SSH access and set a static IP so they can be attached headlessly to my home network and accessed via PuTTY or some other command line tool. (I do not have any spare monitors in my house and hooking up each and every Linux board to my TV is tedious...)&nbsp;</p>
+
+<p>Thankfully, on the UDOO&nbsp;SSH access is enabled by default on the default Ubuntu OS distribution!&nbsp;The first time you boot up your UDOO though, it will get assigned a dynamic IP address by your router&#39;s DHCP service. You will need to use this address to connect the first time, so you can then assign a static IP.</p>
+
+<p><em>via GUI</em></p>
+
+<p>If you want to avoid having to find the dynamic IP address for the first time SSH connection and want the simplest approach, then you can set up the static IP in the GUI. If you want to understand how to change things under the covers, then proceed to the &quot;via Command Line&quot;&nbsp;section.</p>
+
+<p>To set a static IP in the Desktop GUI,&nbsp;go to Preferences -&gt; Network Connections. Select the tab corresponding to the type of network connection you are using (Wired, Wireless, etc.) Under IPv4 Settings there is a Method dropdown that allows you to select Manual, and enter your own IP, Gateway, etc.&nbsp;</p>
+
+<p>See! That was easy...</p>
+
+<p><em>via Command Line</em></p>
+
+<p>As more challenging alternative (or if you have no spare monitor you can use) you can also find your UDOO&#39;s IP address by logging into your router, finding it in your list of connected devices,&nbsp;and seeing what IP address was assigned to it by DHCP. Using this IP address you can connect to your UDOO via PuTTY.&nbsp;</p>
+
+<p>You will first need to determine what interface your ethernet port is using. To do so,&nbsp;run this command:</p>
+
+<div style="background:#eee; border:1px solid #ccc; padding:5px 10px"><tt>ifconfig</tt></div>
+
+<p>&nbsp;</p>
+
+<p>If should give you a listing of available network interfaces. Find the one starting with&nbsp;<tt>eth</tt>. Now, edit your <tt>interfaces</tt> file.</p>
+
+<p><em>NOTE: I found that different versions of the default Ubuntu distribution had different interfaces defined. The beta2 release&nbsp;had <tt>eth6 </tt>as the default ethernet interface, while the version 1.0 release used <tt>eth0</tt>. Your mileage may vary!</em></p>
+
+<div style="background:#eee; border:1px solid #ccc; padding:5px 10px"><tt>sudo vi /etc/network/interfaces</tt></div>
+
+<p>&nbsp;</p>
+
+<p><em>NOTE: If you get a prompt about there being a swap file already present (this occured for me in the version 1.0 release of the default Ubuntu distribution), you can proceed. I removed the swap file by running <tt>sudo rm /etc/network/.inferaces.swp</tt>.</em></p>
+
+<p>You should see these lines:</p>
+
+<div style="background:#eee; border:1px solid #ccc; padding:5px 10px"><tt>auto lo<br />
+iface lo inet loopback</tt></div>
+
+<p>&nbsp;</p>
+
+<p>Add the following lines, substitute <tt>eth0 </tt>for the name of your ethernet interface determined from <tt>ifconfig</tt>.</p>
+
+<div style="background:#eee; border:1px solid #ccc; padding:5px 10px"><tt>auto eth0<br />
+iface eth0&nbsp;inet static<br />
+address &lt;YOUR STATIC IP&gt;<br />
+gateway &lt;YOUR GATEWAY IP&gt;<br />
+netmask 255.255.255.0</tt></div>
+
+<p>&nbsp;</p>
+
+<p>For much more extended discussion on this, consult my <a href="http://blogs.sequoiainc.com/blogs/raspberry-pi-host-your-own-git-repository">blog post</a> where I demonstrate how to do this same thing on a Raspberry Pi. If you are interested in establishing a static IP address for your WIFI adapter from the command line, you can also use this <a href="http://blogs.sequoiainc.com/blogs/raspberry-pi-wifi-adapter-with-static-ip">other blog post </a>as a starting point.</p>
+
+<p>&nbsp;</p>
+
+<p><strong>Your First Sketch</strong></p>
+
+<p>So how does this Linux / Arduino thing work? Out of the box, UDOO comes preinstalled with an Arduino IDE that is already setup to talk to the onboard Arduino Due. In a future blog post I will tackle the vastly more difficult challenge of compiling and uploading sketches from the command line... For this post we will use the provided Arduino IDE! (One step at a time...)</p>
+
+<p>Wanting a slightly more substantial project than just illuminating a single LED, I decided to build a binary counter that uses LEDs to count from 1 to 16 in binary in a loop.&nbsp;</p>
+
+<p>First, I built a circuit of four independently controlled LEDs onto a breadboard.&nbsp;A close up photo of the board can be found <a href="https://www.dropbox.com/s/l1ifodyoe1ck2f0/udoo_wiring.jpg">here</a>.&nbsp;</p>
+
+<p><em>NOTE: The long leg (anode) of the LED is on the left, closest to the incoming current. The short leg of the LED is on the right, closest to the resistor. I always get that wrong...</em></p>
+
+<p>This circuit was wired into the Arduino Due side of the UDOO <a href="https://www.dropbox.com/s/nqcb1diepaybn39/udoo_wiring2.jpg">like so</a>.</p>
+
+<p><em>NOTE: I chose pins 23, 25, 27, and 29 for control pins, just because of their position. Any four pins on the board will do.</em></p>
+
+<p>Now it is time for some code!&nbsp;</p>
+
+<div style="background:#eee; border:1px solid #ccc; padding:5px 10px"><tt>int PIN_1 = 23;<br />
+int PIN_2 = 25;<br />
+int PIN_3 = 27;<br />
+int PIN_4 = 29;</tt></div>
+
+<div style="background:#eee; border:1px solid #ccc; padding:5px 10px"><tt>int counter = 0;</tt></div>
+
+<div style="background:#eee; border:1px solid #ccc; padding:5px 10px"><tt>void setup() {<br />
+&nbsp; pinMode(PIN_1, OUTPUT);<br />
+&nbsp; pinMode(PIN_2, OUTPUT);<br />
+&nbsp; pinMode(PIN_3, OUTPUT);<br />
+&nbsp; pinMode(PIN_4, OUTPUT);<br />
+}</tt></div>
+
+<div style="background:#eee; border:1px solid #ccc; padding:5px 10px"><tt>void loop() {</tt></div>
+
+<div style="background:#eee; border:1px solid #ccc; padding:5px 10px"><tt>&nbsp; ++counter;</tt></div>
+
+<div style="background:#eee; border:1px solid #ccc; padding:5px 10px"><tt>&nbsp; int remainder = counter;</tt></div>
+
+<div style="background:#eee; border:1px solid #ccc; padding:5px 10px"><tt>&nbsp; if (remainder &gt;= 8) {<br />
+&nbsp; &nbsp; digitalWrite(PIN_1, HIGH);<br />
+&nbsp; &nbsp; remainder = remainder - 8;<br />
+&nbsp; } else {<br />
+&nbsp; &nbsp; digitalWrite(PIN_1, LOW);<br />
+&nbsp; }</tt></div>
+
+<div style="background:#eee; border:1px solid #ccc; padding:5px 10px"><tt>&nbsp; if (remainder &gt;= 4) {<br />
+&nbsp; &nbsp; digitalWrite(PIN_2, HIGH);<br />
+&nbsp; &nbsp; remainder = remainder - 4;<br />
+&nbsp; } else {<br />
+&nbsp; &nbsp; digitalWrite(PIN_2, LOW);<br />
+&nbsp; }</tt></div>
+
+<div style="background:#eee; border:1px solid #ccc; padding:5px 10px"><tt>&nbsp; if (remainder &gt;= 2) {<br />
+&nbsp; &nbsp; digitalWrite(PIN_3, HIGH);<br />
+&nbsp; &nbsp; remainder = remainder - 2;<br />
+&nbsp; } else {<br />
+&nbsp; &nbsp; digitalWrite(PIN_3, LOW);<br />
+&nbsp; }</tt></div>
+
+<div style="background:#eee; border:1px solid #ccc; padding:5px 10px"><tt>&nbsp; if (remainder &gt;= 1) {<br />
+&nbsp; &nbsp; digitalWrite(PIN_4, HIGH);<br />
+&nbsp; &nbsp; remainder = remainder - 1;<br />
+&nbsp; } else {<br />
+&nbsp; &nbsp; digitalWrite(PIN_4, LOW);<br />
+&nbsp; }</tt></div>
+
+<div style="background:#eee; border:1px solid #ccc; padding:5px 10px"><tt>&nbsp; delay(1000);</tt></div>
+
+<div style="background:#eee; border:1px solid #ccc; padding:5px 10px"><tt>&nbsp; digitalWrite(PIN_1, LOW);<br />
+&nbsp; digitalWrite(PIN_2, LOW);<br />
+&nbsp; digitalWrite(PIN_3, LOW);<br />
+&nbsp; digitalWrite(PIN_4, LOW);</tt></div>
+
+<div style="background:#eee; border:1px solid #ccc; padding:5px 10px"><tt>&nbsp; delay(1000);</tt></div>
+
+<div style="background:#eee; border:1px solid #ccc; padding:5px 10px"><tt>&nbsp; if (counter == 15) {<br />
+&nbsp; &nbsp; counter = 0;<br />
+&nbsp; }<br />
+}</tt></div>
+
+<p>&nbsp;</p>
+
+<p>First we create variables for the pins we are using and the loop counter:</p>
+
+<div style="background:#eee; border:1px solid #ccc; padding:5px 10px"><tt>int PIN_1 = 23;<br />
+int PIN_2 = 25;<br />
+int PIN_3 = 27;<br />
+int PIN_4 = 29;</tt></div>
+
+<div style="background:#eee; border:1px solid #ccc; padding:5px 10px"><tt>int counter = 0;</tt></div>
+
+<p>&nbsp;</p>
+
+<p>If you want to rewire the circuit onto different pins on the Arduino you would need to change these pin variables.</p>
+
+<p>In the <tt>setup()</tt> function we set each of the four pins for output:</p>
+
+<div style="background:#eee; border:1px solid #ccc; padding:5px 10px"><tt>void setup() {<br />
+&nbsp; pinMode(PIN_1, OUTPUT);<br />
+&nbsp; pinMode(PIN_2, OUTPUT);<br />
+&nbsp; pinMode(PIN_3, OUTPUT);<br />
+&nbsp; pinMode(PIN_4, OUTPUT);<br />
+}</tt></div>
+
+<p>&nbsp;</p>
+
+<p>In the <tt>loop()</tt> function we set maintain a counter that repeatedly runs from 0 to 15. To calculate what lights to enable, we create a second variable that carries the remainder between each light. The status of each light is calculated from highest position (binary 8 in this case)&nbsp;to lowest position (binary 1).</p>
+
+<div style="background:#eee; border:1px solid #ccc; padding:5px 10px"><tt>&nbsp; if (remainder &gt;= 8) {<br />
+&nbsp; &nbsp; digitalWrite(PIN_1, HIGH);<br />
+&nbsp; &nbsp; remainder = remainder - 8;<br />
+&nbsp; } else {<br />
+&nbsp; &nbsp; digitalWrite(PIN_1, LOW);<br />
+&nbsp; }</tt></div>
+
+<p>&nbsp;</p>
+
+<p>The logic here is that if the remainder is greater than the binary value of this LED (8, 4, 2, or 1), then subtract the value of this LED from the remainder and enable the light. If the remainder is not greater than the value of this LED, then disable the light (to clear its state from previous runs.) This will go through all four LEDs and set them to the right state for the counter.&nbsp;By the time all the lights are evaluated, the remainder will be zero!</p>
+
+<p>Then you must pause for a second, so the lights will stay lit long enough to see them:</p>
+
+<div style="background:#eee; border:1px solid #ccc; padding:5px 10px"><tt>delay(1000);</tt></div>
+
+<p>&nbsp;</p>
+
+<p>Then, to cause the &quot;blink&quot; effect, you need to turn all the lights off, and wait for another second (again, so that the lights will stay dark long enough to see them.)&nbsp;</p>
+
+<div style="background:#eee; border:1px solid #ccc; padding:5px 10px"><tt>digitalWrite(PIN_1, LOW);<br />
+digitalWrite(PIN_2, LOW);<br />
+digitalWrite(PIN_3, LOW);<br />
+digitalWrite(PIN_4, LOW);</tt></div>
+
+<div style="background:#eee; border:1px solid #ccc; padding:5px 10px"><tt>delay(1000);</tt></div>
+
+<p>&nbsp;</p>
+
+<p><em>NOTE: This last step is optional if you want the counter to smoothly count between values without blinking.</em></p>
+
+<p>To run this sketch, save it in a file called <tt>BinaryCounter.ino</tt> and save it in a directory on your UDOO also called <tt>BinaryCounter</tt>. Open the Arduino IDE and go to File -&gt; Open. Select <tt>BinaryCounter.ino</tt>.</p>
+
+<p>Now click the upload button. It should transfer the sketch to the Arduino Due and your binary counter will start running!</p>
+
+<p>&nbsp;</p>
+
+<p>Questions? Comments? Email me at: smouring@sequoiainc.com!</p>

@@ -1,0 +1,171 @@
+### Introduction
+
+It took a lot to wrest the small slice of time I have for gaming out of the hands of *World Of Warcraft*. After ten years, and 1600+ hours logged of play time, *World Of Warcraft* has been my game of choice, and indeed, the only game I have played, for the last decade.
+
+But the day has come that *WoW* has seen a significant challenger. And that challenger is *Elite: Dangerous*.
+
+A sandbox Space Simulator that hearkens back to *Wing Commander: Privateer* and the more recent *Freelancer*, without the linear progression, forced story line, or limited exploration of either of them, *Elite: Dangerous* is a fascinating game.
+
+While there are no stated objectives or end game criteria, one way to keep score is by how much wealth you accumulate in the game. There are several ways of earning wealth, and my preferred mechanism is trade... (With the occasional trip to the Universal Cartographics screen to sell exploration data...)
+
+### The Problem
+
+Most trade commodities in *Elite: Dangerous* follow a rigorous supply / demand model that responds dynamically to player activity. However, there is a class of products that do not follow these rules.
+
+Rare commodities are unique to a single home station and their price is determined by the distance they are sold from that home station. The price function is inversely exponential (diminishing returns) and the player community estimates that selling them at a star at least 140 to 150 Light Years (LY) away from the home station's star gives the best return on investment.
+
+But trading rare commodities is not easy. There is no way to search for stations with rare commodities, which means finding a lucrative trade route (preferably a route about 150 LY long with a rare commodity station or stations at each end) is a difficult, manual, experimental process.
+
+Fan sites have compiled tables of rare commodity stations including useful facts such as the maximum amount you can purchase, how far the station is from its star, etc. These tables are a helpful start but they lack context and have no way to order them based on distance from a given point (either my location in the game or the location of another rare commodity station.)
+
+Trying to trade rare goods at first required a lot of alt-tabbing back and forth to various wiki sites, and some complicated guesswork about the closest or furthest rare goods stations.
+
+Screw that.
+
+I am a programmer confound it! I'm writing a tool to do this for me!
+
+I essentially wanted to be able ask two different questions:
+
+* Given my location, where is the nearest rare commodity station?
+
+* Given a location, where is the nearest profitable rare commodity station (located a minimum of 140 LY away)?
+
+As I developed my solutions I stumbled upon a third question:
+
+* Given a location, what rare commodity stations are there in descending order of distance?
+
+This third question lets me build more sophisticated trade routes. For example, I want to be able to visit several nearby rare commodity stations to fill my cargo hold, before then find a cluster of rare commodity stations at least 140 LY away to sell my holdings at and repeat the process.
+
+Let's look at how I got there!
+
+### Data
+
+I appropriated the data for this project from [here](http://elite-dangerous.wikia.com/wiki/List_of_Rare_Commodities).
+
+Using macros in TextPad, I massaged the HTML in a JSON object that looked like this:
+
+```
+{"system":"17 Lyrae","station":"Langford Enterprise","commodityName":"Ultra-Compact Processor","commodityLimit":"1t","systemLocation":"-120:25:58","stationLocation":"2,200"},
+
+{"system":"36 Ophiuchi","station":"Katzenstein Dock","commodityName":"Ophiuch Exino Artefacts","commodityLimit":"7t","systemLocation":"0:2:20","stationLocation":"4,500,000"},
+
+...
+```
+
+This JSON object formed the foundation of the tool, allowing me to add features like star distance filtering (no one wants to fly straight ahead for 15-20 minutes to get to that station that is 1.7 million Light Seconds (LS) from its star...)
+
+### Code
+
+I built a simple webpage using JQuery that accepted a location and several constraints and would answer the three questions posed above.
+
+The source code can be found [here](https://github.com/marlhammer/marlhammer.github.io/blob/master/rare-commodity.html).
+
+The form has an input for your starting location. It accepts X:Y:Z coordinates and is tolerant of separator due to its parse function:
+
+```
+function parseLocation(location) {
+    return location.split(/[\s,;:]+/);
+}
+```
+
+It also has a simple geometric distance function that can accept the output of `parseLocation()`:
+
+```
+function stationDistance(stationA, stationB) {
+    return Math.sqrt(Math.pow(stationA[0] - stationB[0], 2) + Math.pow(stationA[1] - stationB[1], 2) + Math.pow(stationA[2] - stationB[2], 2));
+}
+```
+
+The form has two additional inputs, one for maximum station distance and another for minimum system distance.
+
+Maximum station distance is for filtering out undesirable stations. Station distance is the distance of the station from its star and corresponds to dead time flying to the station when you arrive in the system.
+
+Minimum system distance is used below. System distance is the distance of the station's star from your current system's star and corresponds to the distance traveled using your Frame Shift Drive.
+
+Finding the nearest rare commodity station is a simple matter of parsing location the user provides, traversing the station list and calculating the distance between each the user's location and each station. By keeping a running minimum, the tool can report the nearest station.
+
+```
+function nearestStation() {
+    if ($('#location').val()) {
+        var maxDistanceStation = $('#maxDistanceStation').val();
+        var minDistanceSystem = $('#minDistanceSystem').val();
+        var location = parseLocation($('#location').val());
+        var minDistanceStation = null;
+        $.each(data, function(i, station) {
+            var stationLocation = parseLocation(station.systemLocation);
+            var distance = stationDistance(location, stationLocation);
+            if (minDistanceStation == null || distance <= minDistanceStation.distance) {
+                if (!minDistanceSystem || distance >= minDistanceSystem) {
+                    if (!maxDistanceStation || parseInt(station.stationLocation) <= parseInt(maxDistanceStation)) {
+                        minDistanceStation = $.extend(true, {"distance": distance}, station) ;
+                    }
+                }
+            }
+        });
+        outputStations([minDistanceStation], maxDistanceStation);
+    } else {
+        alert('Please enter a location!');
+    }
+}
+```
+
+Note that any station that is further away than the maximum station distance (the distance of the station from its star) is excluded.
+
+Note also that the same function can find the nearest *profitable* station by finding the minimum distance station that is no closer than the minimum set by the user in the minimum system distance field.
+
+This just leaves the third capability, which is listing stations in descending order of distance.
+
+This function is trivial:
+
+```
+function listStationsByDistance() {
+    var location = parseLocation($('#location').val());
+    var stationList = [];
+    $.each(data, function(i, station) {
+        stationList.push($.extend(true, {"distance": stationDistance(location, parseLocation(station.systemLocation))}, station));
+    });
+    stationList.sort(function(a,b) {
+        return a.distance - b.distance;
+    });
+    outputStations(stationList, $('#maxDistanceStation').val());
+}
+```
+
+For each station, find its distance from your location and put it in a list. Sort the list by distance and output the results as a table.
+
+With all that done, we have a portable local HTML file that can be used to plot rare commodity station routes in Elite Dangerous!
+
+The file can be run on your local hard drive... But my next thought was to find a place to host it on the internet.
+
+### Hosting
+
+GitHub offers a "GitHub Pages" service that allows the hosting of static web pages. By setting up a specifically named repository: *`<user name>.github.io`* GitHub will automatically host the contents of that repository as a static website at:
+
+`http://<user name>.github.io`
+
+So I setup that repository and adding all my files!
+
+That was an easy first step. But after doing that I recalled that I had a registered a domain name through AWS Route 53 for an earlier project that never materialized. Surely GitHub Pages could support adding a custom domain?
+
+A little looking around and I stumbled across [this site](http://sophiafeng.com/technical/2015/02/12/setting-up-custom-domain-name-with-github-pages-and-amazon-route-53/).
+
+The steps are simple. You first add a file file just named `CNAME` to your GitHub repository. It contains, on a single line, the domain name you wish to use. This alerts GitHub to the domain name so that it can handle redirects properly.
+
+Next you go to your domain name provider (AWS Route 53 in my case) and add an A record and a CNAME record:
+
+The A record contains GitHub's IP addresses:
+
+```
+192.30.252.153
+192.30.252.154
+```
+
+The CNAME record contains your domain name.
+
+Once that is all setup you can access your GitHub Pages site via DNS:
+
+[www.marlthehammer.com](http://www.marlthehammer.com)
+
+Success! We now have the tool hosted on the internet!
+
+Questions? Comments? Email me at: smouring@sequoiainc.com!

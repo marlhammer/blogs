@@ -1,0 +1,17 @@
+#### Combine
+
+This past October, the Sequoia Team released [Combine 3.5](https://blogs.sequoiainc.com/sequoia-combine-3-5-release-and-introducing-sequoia-harvest/) and debuted Harvest which improved our C2S emulation capabilities and established a platform for low-to-high software development. Since then we have been working to not only further mature our C2S migration capabilities but also expand support to other operational air-gapped environments.
+
+That work has culminated in Combine Version 4.0 which provides support for the newly released SC2S region! Combine Version 4.0 will provide SC2S simulation for workload migration in parallel to the existing C2S simulation capabilities.
+
+Combine Version 4.0 will be available starting in January 1st, 2018!
+
+#### Roadmap
+
+As we open this new year Sequoia is excited about the opportunities for Combine, and helping our customers on their C2S, and now SC2S, migration journeys!
+
+Our development roadmap for Combine remains focused on improved Migration Dashboard (sorting, filtering, and smart analytics that offer solutions for common problems), self service options for TAP role and TAP user creation, and other great improvements!
+
+For more information on Combine please visit [www.sequoiacombine.com](http://www.sequoiacombine.com).
+
+For other consulting needs or to enlist Sequoia as a partner in migrating your software to C2S or SC2S please contact us [www.sequoiainc.com](https://www.sequoiainc.com).

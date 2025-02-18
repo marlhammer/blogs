@@ -1,0 +1,172 @@
+<p>Laying out components in Swing is almost as frustrating as laying out components with CSS. (Almost... Not quite... But almost...) It suffers from the some of same inexplicable twitchiness as CSS (&quot;where did those 2 extra pixels come from?!&quot;, &quot;why isn&#39;t my label lined up with my check box same way it is with my radio button?!&quot;, and so forth). But Swing has another problem. I call it: Death By Component.</p>
+
+<p>After hours of tweaking, tuning, and adjusting you finally perfect an intricate layout for your application using a combination of <tt>BorderLayout</tt>, <tt>GridLayout</tt>, and <tt>FlowLayout</tt>... Only to realize that you did so by creating 137 nested <tt>JPanel </tt>objects.</p>
+
+<p>And what are you going to name all those?</p>
+
+<div style="background:#eee; border:1px solid #ccc; padding:5px 10px"><tt>JPanel mainPanel = new JPanel();<br />
+...<br />
+JPanel contentPanel = new JPanel();<br />
+mainPanel.add(contentPanel)<br />
+...<br />
+JPanel centerPanel = new JPanel();<br />
+contentPanel.add(centerPanel);<br />
+...<br />
+JPanel outerPanel = new JPanel();<br />
+centerPanel.add(outerPanel);<br />
+...<br />
+JPanel innerPanel = new JPanel();<br />
+outerPanel.add(innerPanel);<br />
+...<br />
+JPanel basePanel = new JPanel();<br />
+innerPanel.add(basePanel);<br />
+...<br />
+JPanel upperPanel = new JPanel();<br />
+basePanel.add(upperPanel);<br />
+...<br />
+JPanel lowerPanel = new JPanel();<br />
+upperPanel.add(lowerPanel);<br />
+...</tt></div>
+
+<p>&nbsp;</p>
+
+<p>Or should the <tt>upperPanel</tt> be inside the <tt>innerPanel</tt>? That does not sound right. Maybe I should rename <tt>innerPanel </tt>to something else like <tt>outerPanel</tt>... Oh wait that is taken already. Drats!</p>
+
+<p>Yeah... There has to be a better way.</p>
+
+<p>There are a couple ways to address this problem (and feel free to sound off in the comments with your ideas!) but my current preferred method is to use anonymous classes and initializer blocks.</p>
+
+<p>For example:</p>
+
+<div style="background:#eee; border:1px solid #ccc; padding:5px 10px"><tt>JPanel rootPanel = new JPanel();<br />
+rootPanel.setLayout(new BorderLayout());</tt></div>
+
+<div style="background:#eee; border:1px solid #ccc; padding:5px 10px"><tt>JPanel northPanel = new JPanel();<br />
+northPanel.setBorder(new BevelBorder(BevelBorder.RAISED));<br />
+JPanel topMenu = new JPanel();<br />
+topPanel.setLayout(new GridLayout(1, 6);<br />
+...<br />
+northPanel.add(topMenu);<br />
+rootPanel.add(northPanel, BorderLayout.NORTH);</tt></div>
+
+<div style="background:#eee; border:1px solid #ccc; padding:5px 10px"><tt>JPanel centerPanel = new JPanel();<br />
+centerPanel.setLayout(new BoxLayout(centerPanel, BoxLayout.Y_AXIS));<br />
+JPanel panel1 = new JPanel();<br />
+...<br />
+centerPanel.add(panel1);<br />
+JPanel panel2 = new JPanel();<br />
+...<br />
+rootPanel.add(panel2);<br />
+JPanel panel3 = new JPanel();<br />
+...<br />
+centerPanel.add(panel3);<br />
+JPanel panel4 = new JPanel();<br />
+...<br />
+centerPanel.add(panel4);<br />
+rootPanel.add(centerPanel, BorderLayout.CENTER);</tt></div>
+
+<div style="background:#eee; border:1px solid #ccc; padding:5px 10px"><tt>JPanel westPanel = new JPanel();<br />
+JPanel sideMenu = new JPanel();<br />
+sidePanel.setLayout(new GridLayout(12, 1);<br />
+...<br />
+westPanel.add(sideMenu);<br />
+rootPanel.add(westPanel, BorderLayout.WEST);</tt></div>
+
+<div style="background:#eee; border:1px solid #ccc; padding:5px 10px"><tt>add(rootPanel);</tt></div>
+
+<p>(A side menu, a top nav bar, and some center content.)</p>
+
+<p>It is really not visually obvious what is happening here. Other than the white space seperating the blocks, you have to carefully read the code to see the relationships. Certainly as the complexity scales (imagine a hundred components instead of just a dozen), it would require significant analysis to understand the full network of relationships in this layout.</p>
+
+<p>Having read (and written!) a lot of code like this, I found myself wanting something better. Particularly I wanted two things: (1) eliminate the need to create <strong>and name </strong>many throw away panels and (2) syntactically enforce the nested relationships.</p>
+
+<p><em>To illustrate (2), very astute readers might notice that <tt>panel2 </tt>in the above example is actually added (incorrectly) to the <tt>rootPanel </tt>instead of to the <tt>centerPanel</tt>. Even though the code compiles fine, it is wrong semantically.</em></p>
+
+<p>So here is my solution. It uses two concepts: (1) anonymous inner classes and (2) initializer blocks.</p>
+
+<p>The basic construct:</p>
+
+<div style="background:#eee; border:1px solid #ccc; padding:5px 10px"><tt>add(new JPanel() {{<br />
+&nbsp;&nbsp;&nbsp; setLayout(new BorderLayout());<br />
+&nbsp;<br />
+&nbsp;&nbsp;&nbsp; add(new JPanel() {{<br />
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; ...<br />
+&nbsp;&nbsp;&nbsp; }});<br />
+&nbsp;&nbsp;&nbsp; ...<br />
+}});</tt></div>
+
+<p><br />
+The double pair of brackets is confusing, so let&#39;s break that down:</p>
+
+<div style="background:#eee; border:1px solid #ccc; padding:5px 10px"><tt>add (&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; // (1) Nested inside a method call, so no </tt></div>
+
+<div style="background:#eee; border:1px solid #ccc; padding:5px 10px"><tt>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; //&nbsp;&nbsp;&nbsp;&nbsp; need to create a throw away variable.<br />
+new JPanel() { // (2) Start an anonymous inner class.</tt></div>
+
+<div style="background:#eee; border:1px solid #ccc; padding:5px 10px"><tt>{&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; // (3) This is an initializer block. It is<br />
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; //&nbsp;&nbsp;&nbsp;&nbsp; executed once per object&nbsp;&nbsp; </tt></div>
+
+<div style="background:#eee; border:1px solid #ccc; padding:5px 10px"><tt>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; //&nbsp;&nbsp;&nbsp;&nbsp; instantiation before the</tt></div>
+
+<div style="background:#eee; border:1px solid #ccc; padding:5px 10px"><tt>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; //&nbsp;&nbsp;&nbsp;&nbsp; constructor.</tt></div>
+
+<div style="background:#eee; border:1px solid #ccc; padding:5px 10px"><tt>&nbsp;&nbsp;&nbsp; setLayout(new BorderLayout());</tt></div>
+
+<div style="background:#eee; border:1px solid #ccc; padding:5px 10px"><tt>&nbsp;&nbsp; &nbsp;<br />
+&nbsp;&nbsp;&nbsp; add(new JPanel() {{ // (4) Rinse and repeat.<br />
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; ...<br />
+&nbsp;&nbsp;&nbsp; }});<br />
+}</tt></div>
+
+<div style="background:#eee; border:1px solid #ccc; padding:5px 10px"><tt>});</tt></div>
+
+<p><br />
+The anonymous inner class allows you to nest components indefinitely within each other, even within method calls. The initializer block allows you to call methods directly on the new object without needing to reference a variable.</p>
+
+<p>Rewriting the example from above, you will see the elegance of putting the two together:</p>
+
+<div style="background:#eee; border:1px solid #ccc; padding:5px 10px"><tt>add(new JPanel() {{<br />
+&nbsp;&nbsp;&nbsp; setLayout(new BorderLayout());</tt></div>
+
+<div style="background:#eee; border:1px solid #ccc; padding:5px 10px"><tt>&nbsp;&nbsp;&nbsp; add(new JPanel() {{<br />
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; setBorder(new BevelBorder(BevelBorder.RAISED));<br />
+&nbsp;&nbsp; &nbsp;<br />
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; add(new JPanel() {{<br />
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; setLayout(new GridLayout(1, 6));<br />
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; &nbsp;<br />
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; ...<br />
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; }});<br />
+&nbsp;&nbsp;&nbsp; }}, BorderLayout.NORTH);&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; &nbsp;</tt></div>
+
+<div style="background:#eee; border:1px solid #ccc; padding:5px 10px"><tt>&nbsp;&nbsp;&nbsp; add(new JPanel() {{<br />
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; setLayout(new BoxLayout(centerPanel, BoxLayout.Y_AXIS));<br />
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; add(new JPanel() {{<br />
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; ...<br />
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; }});&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; &nbsp;<br />
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; add(new JPanel() {{<br />
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; ...<br />
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; }});&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; &nbsp;<br />
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; add(new JPanel() {{<br />
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; ...<br />
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; }});&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; &nbsp;<br />
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; add(new JPanel() {{<br />
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; ...<br />
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; }});&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; &nbsp;<br />
+&nbsp;&nbsp;&nbsp; }}, BorderLayout.CENTER);&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; &nbsp;</tt></div>
+
+<div style="background:#eee; border:1px solid #ccc; padding:5px 10px"><tt>&nbsp;&nbsp;&nbsp; add(new JPanel() {{<br />
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; add(new JPanel() {{<br />
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; setLayout(new GridLayout(12, 1));<br />
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; &nbsp;<br />
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; ...<br />
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; }});&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; &nbsp;<br />
+&nbsp;&nbsp;&nbsp; }}, BorderLayout.WEST);&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; &nbsp;<br />
+}});</tt></div>
+
+<p>&nbsp;</p>
+
+<p>It may be a lot of brackets, but the above notation has the benefits we were looking for: (1) not a single throw away variable anywhere to be seen and (2) nesting is enforced by the compiler. You can rearrange components by simply moving them into a different initializer block. No need to try to track down which component you need to call <tt>add()</tt> on. Just move the code into the right component and you are done!</p>
+
+<p>Questions? Comments? Email me at: smouring@sequoiainc.com</p>
+
+<p>&nbsp;</p>

@@ -1,0 +1,370 @@
+<p>In my <a href="http://blogs.sequoiainc.com/blogs/python-web-crawling-with-scrapy">last blog</a> I introduced Scrapy, a web crawling library for Python, and&nbsp;did some very simple image scraping with Scrapy. In this post, I want to dive a little deeper into Scrapy&#39;s capabilities and show you some more complex web crawling!&nbsp;</p>
+
+<p>A little while ago I went to a chalk talk on <a href="http://www.neo4j.com/?">Neo4J</a>. I was immediately intrigued by the power and simplicity of Neo4J and the different problems it could solve so effectively at scale.</p>
+
+<p><em>NOTE: For those unfamiliar with Neo4J, it is a graph database that stores nodes (which can have an arbitrary number of attributes) and relationships between nodes. It can scale infinitely and can perform graph calculations (such as &quot;find the nodes that are connected to a node&nbsp;that is connected to another node through a certain relationship&quot;) very efficiently.</em></p>
+
+<p>I was immediately inspired to: (a) install Neo4J on my Raspberry Pi, and (b) to scrape IMDB for acting data so I could do things like solve&nbsp;my own &quot;<a href="http://en.wikipedia.org/wiki/Six_Degrees_of_Kevin_Bacon">6 Degrees of Kevin Bacon</a>&quot; problem for an arbitrary actor.</p>
+
+<p>For the record, (a) did not work out at all. I was able, after a lot of effort, to get Neo4J installed on a Raspberry Pi B+ but it crashed immediately as soon as it tried to handle its first query. I am told that it works much better on Java 8 on the Raspberry Pi 2, but I will have to wait for my Raspberry Pi 2 to arrive to verify this. I relocated my efforts to an EC2 instance in AWS and proceed to build my IMDB spider.</p>
+
+<p>With (b) though, I had good success!&nbsp;</p>
+
+<p><em>NOTE: Source code can be downloaded from GitHub&nbsp;<a href="https://github.com/marlhammer/ScrapyCrawler_SixDegrees">here</a>.</em></p>
+
+<p>&nbsp;</p>
+
+<p><strong>Installing Neo4J&nbsp;</strong></p>
+
+<p>I launched an t2.medium&nbsp;EC2 instance in AWS with the stock Amazon AMI. I assigned it a security group that allowed TCP ports 22 and 7474 (for PuTTY and Neo4J Console respectively). I also assigned it an elastic ip so I would have a single fixed IP address to work with and not have to reconfigure PuTTY each time I restarted the instance.&nbsp;</p>
+
+<p>Once the instance was running and I had setup my local PuTTY with the AWS keys, I was able to log in and install Neo4J.</p>
+
+<p>To download Neo4J you can go to their <a href="http://neo4j.com/download/">download page</a>. If you try to download the community edition it will autodetect your operating system. If you are not running on a Mac/Linux computer this will be the wrong version for AWS. Instead, click on Other Release and download the latest community edition version for Mac/Linux. Once it has downloaded you can transfer it&nbsp;to your AWS EC2 instance using the PSCP command line tool that comes with PuTTY.&nbsp;</p>
+
+<p>Alternatively, you can start the download on your computer, and then find the actual source URL of the download (in Chrome by looking in the Downloads page for example.) You can then download Neo4J directly from the URL on your EC2 instance using <tt>wget</tt>:</p>
+
+<div style="background:#eee; border:1px solid #ccc; padding:5px 10px"><tt>wget -O neo4j.tar.gz &#39;http://neo4j.com/artifact.php?name=neo4j-community-2.2.1-unix.tar.gz&#39;</tt></div>
+
+<p>&nbsp;</p>
+
+<p>Once copied to your EC2 instance, all you need to do is untar the file:</p>
+
+<div style="background:#eee; border:1px solid #ccc; padding:5px 10px"><tt>tar xvf neo4j.tar.gz</tt></div>
+
+<p>&nbsp;</p>
+
+<p>You should also modified your <tt>.bash_profile</tt> or <tt>.bashrc</tt> to export <tt>NEO4J_HOME</tt> and add Neo4J to your <tt>PATH</tt> for convenience.</p>
+
+<div style="background:#eee; border:1px solid #ccc; padding:5px 10px"><tt>export NEO4J_HOME=/home/ec2-user/neo4j-community-2.2.1<br />
+export PATH=$NEO4J_HOME/bin:$PATH</tt></div>
+
+<p>&nbsp;</p>
+
+<p>You can confirm that Neo4J is installed by running the command:</p>
+
+<div style="background:#eee; border:1px solid #ccc; padding:5px 10px"><tt>neo4j status</tt></div>
+
+<p>&nbsp;</p>
+
+<p>You can then start Neo4j by running:</p>
+
+<div style="background:#eee; border:1px solid #ccc; padding:5px 10px"><tt>neo4j start</tt></div>
+
+<p>&nbsp;</p>
+
+<p>After Neo4J starts there should be a console available at:</p>
+
+<div style="background:#eee; border:1px solid #ccc; padding:5px 10px"><tt>&lt;EC2 instance ip address&gt;:7474/browser</tt></div>
+
+<p>&nbsp;</p>
+
+<p>The console, among many other things, allows you to run Neo4J queries against your Neo4J. For the purposes of this project, you really only need to do two simple things. One, see all the nodes and node relationships:</p>
+
+<div style="background:#eee; border:1px solid #ccc; padding:5px 10px"><tt>MATCH (n)<br />
+RETURN n;</tt></div>
+
+<p>&nbsp;</p>
+
+<p>Two, delete all the nodes and node relationships in the database so you can run the crawler multiple times without conflicting data:</p>
+
+<div style="background:#eee; border:1px solid #ccc; padding:5px 10px"><tt>MATCH (n)<br />
+OPTIONAL MATCH (n)-[r]-()<br />
+DELETE n,r</tt></div>
+
+<p>&nbsp;</p>
+
+<p><strong>Installing Scrapy / py2neo</strong></p>
+
+<p>The next step is to install <a href="http://scrapy.org/">Scrapy</a> and a library called <a href="http://py2neo.org/2.0/">py2neo </a>on your EC2 instance.&nbsp;</p>
+
+<p>By default, AWS preinstalls <tt>pip</tt>, so you only need install Scrapy and some dependencies (found, as usual, by trial and error and repeated use of Google&nbsp;on my part.)</p>
+
+<div style="background:#eee; border:1px solid #ccc; padding:5px 10px"><tt>sudo yum install libffi-devel<br />
+sudo yum install libxslt-devel<br />
+sudo yum install gcc<br />
+sudo yum install openssl-devel<br />
+sudo pip install Scrapy<br />
+sudo pip install service_identity</tt></div>
+
+<p>&nbsp;</p>
+
+<p>Scrapy should now be installed on your EC2 instance.</p>
+
+<p>After Scrapy, you can install py2neo which is a compact Python library for interacting with Neo4J from within a Python script.</p>
+
+<p>The command to install py2neo is:</p>
+
+<div style="background:#eee; border:1px solid #ccc; padding:5px 10px"><tt>sudo pip install py2neo</tt></div>
+
+<p>&nbsp;</p>
+
+<p>To test py2neo you can run the Python console:</p>
+
+<div style="background:#eee; border:1px solid #ccc; padding:5px 10px"><tt>sudo python</tt></div>
+
+<p>&nbsp;</p>
+
+<p>And run this script:</p>
+
+<div style="background:#eee; border:1px solid #ccc; padding:5px 10px"><tt>from py2neo import Graph<br />
+from py2neo import Node&nbsp;<br />
+from py2neo import Relationship<br />
+graph = Graph()<br />
+stephen = graph.merge_one(&quot;Person&quot;, &quot;name&quot;, &quot;Stephen Mouring&quot;);<br />
+kathryn = graph.merge_one(&quot;Person&quot;, &quot;name&quot;, &quot;Kathryn Mouring&quot;);<br />
+stephen_loves_kathryn = Relationship(stephen, &quot;LOVES&quot;, kathryn)<br />
+graph.create_unique(stephen_loves_kathryn);</tt></div>
+
+<p>&nbsp;</p>
+
+<p>(Feel free to substitute your own name and the name of a loved one if you are feeling particularly romantic...)</p>
+
+<p>You should be able to run the &quot;select all&quot; query in the Neo4J Console (<tt>MATCH (n)&nbsp;RETURN n;</tt>) and see your two nodes connected by a relationship.</p>
+
+<p>&nbsp;</p>
+
+<p><strong>Designing The Code</strong></p>
+
+<p>For this project, we will be need to write a slightly more complex web crawler. In the prior blog post, we only needed to write a crawler that processed one kind of page.</p>
+
+<p>IMDB (our target site in this project) has several different kinds of pages. Each actor has a page listing (among other things) all their films. Each film has a page listing (among other things) all its actors. To solve problems like the &quot;6 Degrees of Separation&quot; problem, we want to create a graph in Neo4J where actors are the nodes and films they played in are the relationships. Two actors will be connected by a relationship if they acted in the same film.&nbsp;</p>
+
+<p>To do this in Scrapy, we will need to process actor pages differently than we process film pages. When we process an actor page, we will create a&nbsp;<em>unique</em>&nbsp;node for that actor, a <em>unique</em> node for each film on that actor&#39;s page, and a <em>unique&nbsp;</em>relationship between that actor and that film. We then process each film page listed on that actor page. These pages then generate requests for new actor pages which are processed as before.</p>
+
+<p>It is important that the nodes and node relationships are unique. Neo4J allows you to have identical nodes and identical relationships between nodes, but that would prevent us from searching relationships between actors correctly. We will need to take steps to enforce uniqueness, discussed below.</p>
+
+<p>&nbsp;</p>
+
+<p><strong>Writing The Item</strong></p>
+
+<p>You might think we need two different Scrapy Items for this problem (one for Actor and one for Film), but in reality we can do it with a single item:</p>
+
+<div style="background:#eee; border:1px solid #ccc; padding:5px 10px"><tt><em>File: items.py</em></tt></div>
+
+<div style="background:#eee; border:1px solid #ccc; padding:5px 10px"><tt>import scrapy</tt></div>
+
+<div style="background:#eee; border:1px solid #ccc; padding:5px 10px"><tt>class ImdbPersonPage(scrapy.Item):<br />
+&nbsp; &nbsp; person = scrapy.Field()<br />
+&nbsp; &nbsp; person_id = scrapy.Field()<br />
+&nbsp; &nbsp; films = scrapy.Field()<br />
+&nbsp; &nbsp; pass</tt></div>
+
+<p>&nbsp;</p>
+
+<p>We have a <tt>person </tt>field for the actor&#39;s name, a <tt>person_id</tt> for the actor, and <tt>films</tt>, a list of all the film ids the actor has acted in. This allows us to create both kinds of nodes and relatoinships between them using a single Scrapy Item.</p>
+
+<p><em>NOTE: IMDB alreayd has a unique id assigned to each actor (a seven digit number prefixed with <tt>nm</tt>) and each film (a seven digit number prefixed with <tt>tt</tt>).&nbsp;We will use these in our program for convenience.</em></p>
+
+<p>&nbsp;</p>
+
+<p><strong>Writing The Pipeline</strong></p>
+
+<p>Although it is putting the cart before the horse a little bit, I think it is easier to see the Pipeline code before we dive into the Spider code.</p>
+
+<p>The <tt>ImdbPersonPagePipeline</tt> accepts <tt>ImdbPersonPage </tt>items. It then creates a unique node for the actor, a unique node for each film, and a unique relatonship between the actor and the films.&nbsp;</p>
+
+<div style="background:#eee; border:1px solid #ccc; padding:5px 10px"><tt><em>File: pipelines.py</em></tt></div>
+
+<div style="background:#eee; border:1px solid #ccc; padding:5px 10px"><tt>from py2neo import Graph<br />
+from py2neo import Node<br />
+from py2neo import Relationship</tt></div>
+
+<div style="background:#eee; border:1px solid #ccc; padding:5px 10px"><tt>class ImdbPersonPagePipeline(object):<br />
+&nbsp; &nbsp; graph = Graph()</tt></div>
+
+<div style="background:#eee; border:1px solid #ccc; padding:5px 10px"><tt>&nbsp; &nbsp; def process_item(self, item, spider):<br />
+&nbsp; &nbsp; &nbsp; &nbsp; print(&#39;Putting Person in Neo4J: &#39; + item[&#39;person_id&#39;])<br />
+&nbsp; &nbsp; &nbsp; &nbsp; person_node = self.graph.merge_one(&quot;Person&quot;, &quot;id&quot;, item[&#39;person_id&#39;])<br />
+&nbsp; &nbsp; &nbsp; &nbsp; person_node.properties[&#39;name&#39;] = item[&#39;person&#39;]<br />
+&nbsp; &nbsp; &nbsp; &nbsp; person_node.push()<br />
+&nbsp; &nbsp; &nbsp; &nbsp; for film in item[&#39;films&#39;]:<br />
+&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; film_node = self.graph.merge_one(&quot;Film&quot;, &quot;id&quot;, film)<br />
+&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; film_node.properties[&#39;name&#39;] = item[&#39;films&#39;][film]<br />
+&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; film_node.push()<br />
+&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; self.graph.create_unique(Relationship(person_node, &quot;ACTED_IN&quot;, film_node))<br />
+&nbsp; &nbsp; &nbsp; &nbsp; return item</tt></div>
+
+<p>&nbsp;</p>
+
+<p>A few things to note... First of all, the graph.<tt>merge_one </tt>method takes a Node type, and an property pair. If that a Node of that type with that property pair already exists it returns it. Otherwise it creates it. This is what ensures our actor (and film) nodes are unique.</p>
+
+<p>For convenience we also add the actor&#39;s real name to the node as a property to make&nbsp;it easier to view the grpah in the Neo4J Console.</p>
+
+<p>We then loop over the films associated with the actor and create unique notes for those, again, using the <tt>merge_one</tt> method.</p>
+
+<p>Finally, we now have a reference to both the actor node and the film node, so we create an <tt>ACTED_IN</tt> relatoinship between them using the <tt>create_unique </tt>method. (Suprise! The <tt>create_unique </tt>method creates a relationship if it is not present, or does nothing if it is already present.)</p>
+
+<p>&nbsp;</p>
+
+<p><strong>Writing The Spider</strong></p>
+
+<p>The Spider is definitely the most challenging part of code to write. There are several things to note. First, it uses two different callbacks, one for each type of page it is processing. Second, we have to account for coming across the same page multiple times. (This is a real problem in general purpose web crawler as two pages can link to each other (even indirectly) and trap your crawler in an infinite loop. Third, there is a significant gotcha in Scrapy that I discovered during this project. You will see some lines commented out which will be discussed shortly.</p>
+
+<p>I will show you the whole class and then dive into each component:</p>
+
+<div style="background:#eee; border:1px solid #ccc; padding:5px 10px"><em>File: spiders/imdb_6_degrees.py</em></div>
+
+<div style="background:#eee; border:1px solid #ccc; padding:5px 10px"><tt>import string</tt></div>
+
+<div style="background:#eee; border:1px solid #ccc; padding:5px 10px"><tt>import scrapy</tt></div>
+
+<div style="background:#eee; border:1px solid #ccc; padding:5px 10px"><tt># from py2neo import Graph<br />
+# from py2neo import Node</tt></div>
+
+<div style="background:#eee; border:1px solid #ccc; padding:5px 10px"><tt>from imdb.items import ImdbPersonPage</tt></div>
+
+<div style="background:#eee; border:1px solid #ccc; padding:5px 10px"><tt>class Imdb6DegreesSpider(scrapy.Spider):<br />
+&nbsp; &nbsp; name = &quot;imdb&quot;<br />
+&nbsp; &nbsp; start_urls = (<br />
+&nbsp; &nbsp; &nbsp; &nbsp; &#39;http://www.imdb.com/name/nm0000246&#39;,<br />
+&nbsp; &nbsp; )</tt></div>
+
+<div style="background:#eee; border:1px solid #ccc; padding:5px 10px"><tt>&nbsp; &nbsp; people = 0<br />
+&nbsp; &nbsp; peopleLimit = 10</tt></div>
+
+<div style="background:#eee; border:1px solid #ccc; padding:5px 10px"><tt>&nbsp; &nbsp; people_crawled = []</tt></div>
+
+<div style="background:#eee; border:1px solid #ccc; padding:5px 10px"><tt>&nbsp; &nbsp; films_crawled = []</tt></div>
+
+<div style="background:#eee; border:1px solid #ccc; padding:5px 10px"><tt># &nbsp; &nbsp;graph = Graph()</tt></div>
+
+<div style="background:#eee; border:1px solid #ccc; padding:5px 10px"><tt>&nbsp; &nbsp; def parse(self, response):<br />
+&nbsp; &nbsp; &nbsp; &nbsp; person_id = string.split(response.url, &quot;/&quot;)[-2]</tt></div>
+
+<div style="background:#eee; border:1px solid #ccc; padding:5px 10px"><tt># &nbsp; &nbsp; &nbsp; &nbsp;if (self.has_person_been_crawled(person_id)):<br />
+# &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp;return</tt></div>
+
+<div style="background:#eee; border:1px solid #ccc; padding:5px 10px"><tt>&nbsp; &nbsp; &nbsp; &nbsp; personPage = ImdbPersonPage()<br />
+&nbsp; &nbsp; &nbsp; &nbsp; personPage[&#39;person&#39;] = response.xpath(&quot;//span[@itemprop=&#39;name&#39;]/text()&quot;).extract()[0]<br />
+&nbsp; &nbsp; &nbsp; &nbsp; personPage[&#39;person_id&#39;] = person_id<br />
+&nbsp; &nbsp; &nbsp; &nbsp; personPage[&#39;films&#39;] = {}<br />
+&nbsp; &nbsp; &nbsp; &nbsp; print(&#39;Person: &#39; + personPage[&#39;person_id&#39;])<br />
+&nbsp; &nbsp; &nbsp; &nbsp; for filmElement in response.xpath(&quot;//div[@id=&#39;filmography&#39;]/div[@id=&#39;filmo-head-actor&#39;]/following-sibling::div[contains(@class, &#39;filmo-category-section&#39;)][1]/div[contains(@class, &#39;filmo-row&#39;)]//a[starts-with(@href, &#39;/title/tt&#39;)]&quot;):<br />
+&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; film_id = string.split(filmElement.xpath(&#39;@href&#39;).extract()[0], &#39;/&#39;)[-2]</tt></div>
+
+<div style="background:#eee; border:1px solid #ccc; padding:5px 10px"><tt>&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; personPage[&#39;films&#39;][film_id] = filmElement.xpath(&#39;text()&#39;).extract()[0]</tt></div>
+
+<div style="background:#eee; border:1px solid #ccc; padding:5px 10px"><tt>&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; if (not film_id in self.films_crawled):<br />
+&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; self.films_crawled.append(film_id)<br />
+&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; yield scrapy.Request(&#39;http://www.imdb.com&#39; + filmElement.xpath(&#39;@href&#39;).extract()[0], callback=self.parse_film_page)<br />
+&nbsp; &nbsp; &nbsp; &nbsp; yield personPage<br />
+&nbsp; &nbsp; &nbsp; &nbsp; return</tt></div>
+
+<div style="background:#eee; border:1px solid #ccc; padding:5px 10px"><tt>&nbsp; &nbsp; def parse_film_page(self, response):<br />
+&nbsp; &nbsp; &nbsp; &nbsp; for personElement in response.xpath(&quot;//table[contains(@class, &#39;cast_list&#39;)]//td[contains(@itemprop, &#39;actor&#39;)]//a&quot;):<br />
+&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; person_id = string.split(personElement.xpath(&#39;@href&#39;).extract()[0], &quot;/&quot;)[-2]<br />
+&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; if (person_id in self.people_crawled):<br />
+&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; print(&#39;Person: &#39; + person_id + &#39; ALREADY CRAWLED&#39;)<br />
+&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; return</tt></div>
+
+<div style="background:#eee; border:1px solid #ccc; padding:5px 10px"><tt>&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; self.people_crawled.append(person_id)<br />
+&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp;<br />
+&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; self.people += 1<br />
+&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; if (self.people &lt;= self.peopleLimit):<br />
+&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; yield scrapy.Request(&#39;http://www.imdb.com&#39; + personElement.xpath(&#39;@href&#39;).extract()[0], callback=self.parse)<br />
+&nbsp; &nbsp; &nbsp; &nbsp; return</tt></div>
+
+<div style="background:#eee; border:1px solid #ccc; padding:5px 10px"><tt># &nbsp; &nbsp;def has_person_been_crawled(self, person_id):<br />
+# &nbsp; &nbsp; &nbsp; &nbsp;person = list(self.graph.find(&#39;Person&#39;, property_key=&#39;id&#39;, property_value=person_id))<br />
+# &nbsp; &nbsp; &nbsp; &nbsp;if (len(person) &gt; 0):<br />
+# &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp;print(&#39;ALREADY CRAWLED: &#39; + person_id)<br />
+# &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp;return True<br />
+# &nbsp; &nbsp; &nbsp; &nbsp;return False</tt></div>
+
+<p>&nbsp;</p>
+
+<p>All right, taking it from the top.&nbsp;</p>
+
+<div style="background:rgb(238, 238, 238); border:1px solid rgb(204, 204, 204); padding:5px 10px"><tt>&nbsp; &nbsp; name = &quot;imdb&quot;<br />
+&nbsp; &nbsp; start_urls = (<br />
+&nbsp; &nbsp; &nbsp; &nbsp; &#39;http://www.imdb.com/name/nm0000246&#39;,<br />
+&nbsp; &nbsp; )</tt></div>
+
+<div style="background:rgb(238, 238, 238); border:1px solid rgb(204, 204, 204); padding:5px 10px"><tt>&nbsp; &nbsp; people = 0<br />
+&nbsp; &nbsp; peopleLimit = 10</tt></div>
+
+<div style="background:rgb(238, 238, 238); border:1px solid rgb(204, 204, 204); padding:5px 10px"><tt>&nbsp; &nbsp; people_crawled = []</tt></div>
+
+<div style="background:rgb(238, 238, 238); border:1px solid rgb(204, 204, 204); padding:5px 10px"><tt>&nbsp; &nbsp; films_crawled = []</tt></div>
+
+<p>&nbsp;</p>
+
+<p>Both <tt>name </tt>and <tt>start_urls </tt>variables&nbsp;are required by Scrapy. Our Spider starts&nbsp;on a single actor page. (I choose Bruce Willis... Why? Because of <a href="https://www.youtube.com/watch?v=t6o-6WThtYo">this</a>.) I also added a count of the total number of actors processed (<tt>people</tt>) and, for testing purposes, a limit to the number of actors we will process (<tt>peopleLimit</tt>). I also added two arrays to keep track of what actors and what films we have already processed.</p>
+
+<p>Next is the actual <tt>parse</tt> method. Since we are starting on an actor page, the <tt>parse </tt>method will handle actor pages. We will then write a separate callback for the film pages.</p>
+
+<div style="background:rgb(238, 238, 238); border:1px solid rgb(204, 204, 204); padding:5px 10px"><tt>&nbsp; &nbsp; def parse(self, response):<br />
+&nbsp; &nbsp; &nbsp; &nbsp; person_id = string.split(response.url, &quot;/&quot;)[-2]</tt></div>
+
+<div style="background:rgb(238, 238, 238); border:1px solid rgb(204, 204, 204); padding:5px 10px"><tt># &nbsp; &nbsp; &nbsp; &nbsp;if (self.has_person_been_crawled(person_id)):<br />
+# &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp;return</tt></div>
+
+<div style="background:rgb(238, 238, 238); border:1px solid rgb(204, 204, 204); padding:5px 10px"><tt>&nbsp; &nbsp; &nbsp; &nbsp; personPage = ImdbPersonPage()<br />
+&nbsp; &nbsp; &nbsp; &nbsp; personPage[&#39;person&#39;] = response.xpath(&quot;//span[@itemprop=&#39;name&#39;]/text()&quot;).extract()[0]<br />
+&nbsp; &nbsp; &nbsp; &nbsp; personPage[&#39;person_id&#39;] = person_id<br />
+&nbsp; &nbsp; &nbsp; &nbsp; personPage[&#39;films&#39;] = {}<br />
+&nbsp; &nbsp; &nbsp; &nbsp; print(&#39;Person: &#39; + personPage[&#39;person_id&#39;])</tt></div>
+
+<p>&nbsp;</p>
+
+<p>First, the method extracts the <tt>person_id </tt>(using IMDB&#39;s id scheme) from the URL of the page. It then constructs an <tt>ImdbPersonPage </tt>item and initializes the name of the actor, the <tt>person_id</tt>, and an empty array to store the films this actor has acted in.&nbsp;(Note that IMDB tags metadata&nbsp;about the actor with a custom HTML attribute&nbsp;(<tt>itemprop</tt>)&nbsp;making it easy to locate the actor&#39;s name on the page.)</p>
+
+<p>After collecting the information about the actor for the item, we then process all the films that the actor has been in.</p>
+
+<div style="background:rgb(238, 238, 238); border:1px solid rgb(204, 204, 204); padding:5px 10px"><tt>&nbsp; &nbsp; &nbsp; &nbsp; for filmElement in response.xpath(&quot;//div[@id=&#39;filmography&#39;]/div[@id=&#39;filmo-head-actor&#39;]/following-sibling::div[contains(@class, &#39;filmo-category-section&#39;)][1]/div[contains(@class, &#39;filmo-row&#39;)]//a[starts-with(@href, &#39;/title/tt&#39;)]&quot;):<br />
+&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; film_id = string.split(filmElement.xpath(&#39;@href&#39;).extract()[0], &#39;/&#39;)[-2]</tt></div>
+
+<div style="background:rgb(238, 238, 238); border:1px solid rgb(204, 204, 204); padding:5px 10px"><tt>&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; personPage[&#39;films&#39;][film_id] = filmElement.xpath(&#39;text()&#39;).extract()[0]</tt></div>
+
+<div style="background:rgb(238, 238, 238); border:1px solid rgb(204, 204, 204); padding:5px 10px"><tt>&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; if (not film_id in self.films_crawled):<br />
+&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; self.films_crawled.append(film_id)<br />
+&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; yield scrapy.Request(&#39;http://www.imdb.com&#39; + filmElement.xpath(&#39;@href&#39;).extract()[0], callback=self.parse_film_page)<br />
+&nbsp; &nbsp; &nbsp; &nbsp; yield personPage<br />
+&nbsp; &nbsp; &nbsp; &nbsp; return</tt></div>
+
+<p>&nbsp;</p>
+
+<p>That is a doosie of an xpath expression! So let me explain...&nbsp;Each actor page can have different sections to cover different roles the actor has in a film (some actors also direct films, produce films, etc.) So first we need to find the right section (under the <tt>div#filmography</tt> there is a subsection <tt>div#filmo-head-actor</tt>). Then we narrow it down to a row for each film (<tt>div.filmo-row</tt>), and then find all URLs&nbsp;in those rows that start with<tt> /title/tt</tt>. (This is important because there are other links in the rows&nbsp;that do not point&nbsp;to the film&nbsp;but rather to other metadata about the film.)</p>
+
+<p>For each film URL we find, we extract the id and add it to the <tt>films </tt>list of the item. We then generate a new request for the film url to go crawl that page.&nbsp;Notice that I am specifying a different callback (<tt>parse_film_page)&nbsp;</tt>when I yield the request.</p>
+
+<p>After processing all the films on the page, we then commit the item to the pipeline.&nbsp;We also add the film id to the <tt>films_crawled </tt>array and check that array before processing the flim. This prevents us from processing the same film twice.</p>
+
+<p><em>NOTE: You notice some of the code in the Spider is commented out where I initially tried to be clever and query Neo4J for the actor and film nodes instead of storing them locally in an array. My thought is that this would scale better&nbsp;and be a more realistic solution. I discovered however that the Spider and the Pipeline operate on different threads!&nbsp;</em></p>
+
+<p><em>Once a Spider commits an item to the Pipeline it continues crawling. Since it can take a long time to commit objects to Neo4J, the Pipeline can become backed up, creating a long delay between when an Item is committed and when the nodes appear in Neo4J. The Spider therefore&nbsp;cannot rely on the Pipeline to process the Item quickly enough for it to use Neo4J to detect which actors and films it has already processed.</em></p>
+
+<p>The calback for the flim page is much simpler:</p>
+
+<div style="background:rgb(238, 238, 238); border:1px solid rgb(204, 204, 204); padding:5px 10px"><tt>&nbsp; &nbsp; def parse_film_page(self, response):<br />
+&nbsp; &nbsp; &nbsp; &nbsp; for personElement in response.xpath(&quot;//table[contains(@class, &#39;cast_list&#39;)]//td[contains(@itemprop, &#39;actor&#39;)]//a&quot;):<br />
+&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; person_id = string.split(personElement.xpath(&#39;@href&#39;).extract()[0], &quot;/&quot;)[-2]<br />
+&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; if (person_id in self.people_crawled):<br />
+&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; print(&#39;Person: &#39; + person_id + &#39; ALREADY CRAWLED&#39;)<br />
+&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; return</tt></div>
+
+<div style="background:rgb(238, 238, 238); border:1px solid rgb(204, 204, 204); padding:5px 10px"><tt>&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; self.people_crawled.append(person_id)<br />
+&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp;<br />
+&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; self.people += 1<br />
+&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; if (self.people &lt;= self.peopleLimit):<br />
+&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; yield scrapy.Request(&#39;http://www.imdb.com&#39; + personElement.xpath(&#39;@href&#39;).extract()[0], callback=self.parse)<br />
+&nbsp; &nbsp; &nbsp; &nbsp; return</tt></div>
+
+<p>&nbsp;</p>
+
+<p>The actor page actually contains all the information we need to build the actor and film nodes, and the relationships between them. All we need from the film page is more actor pages to crawl.</p>
+
+<p>All the <tt>parse_film_page </tt>does is find the section of the page that contains all the actors that acted&nbsp;in the film, and yield a new request each actor page. When it yields the request it sets the callback to be the original <tt>parse</tt> method, thus completing the loop between the two methods.</p>
+
+<p>Like the film page, it also adds the id of the film to an array and checks that array before crawling the page to make sure it has not already processed that page.</p>
+
+<p>&nbsp;</p>
+
+<p><strong>Conclusion</strong></p>
+
+<p>That is all there is! You can now crawl IMDB and will see a network of nodes and node relationships populate inside of Neo4J allowing you to run whatever queries you choose to against the data!</p>
+
+<p>Questions? Comments? Email me at: smouring@sequoiainc.com</p>
+
+<p>&nbsp;</p>

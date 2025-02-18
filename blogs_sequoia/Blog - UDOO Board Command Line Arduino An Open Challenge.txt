@@ -1,0 +1,161 @@
+<p>In <a href="http://blogs.sequoiainc.com/blogs/udoo-board-your-first-sketch">my last post</a> we setup a UDOO Board and ran our first, non-trivial sketch.</p>
+
+<p>But when I was writing that post, my original goal was to show how to compile and upload Arduino sketches <em>from the command line</em>. That should be simple, right? Right? Surely!</p>
+
+<p>Not so much as it turns out...&nbsp;</p>
+
+<p>Apparently working on Arduino from the command line is a challenging, &quot;advanced users only&quot;&nbsp;task. Working on Arduino from the command line of a relatively new and less-supported platform like the UDOO board is even more so. So after many hours of working on this, I have not yet fully conquered it...</p>
+
+<p>So I present this blog as an open challenge! I intend to update it as I make more progress, but I also hope to solicit help in the comments if anyone else out there has had similar problems and had more success defeating them!</p>
+
+<p>&nbsp;</p>
+
+<p><strong>The Sketch</strong></p>
+
+<p>I choose a really simple sketch to execute, just a high speed variant of the standard Blink tutorial:</p>
+
+<div style="background:#eee; border:1px solid #ccc; padding:5px 10px"><tt>int LED_1 = 23;</tt></div>
+
+<div style="background:#eee; border:1px solid #ccc; padding:5px 10px"><tt>void setup() { &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp;<br />
+&nbsp; pinMode(LED_1, OUTPUT); &nbsp; &nbsp;&nbsp;<br />
+}</tt></div>
+
+<div style="background:#eee; border:1px solid #ccc; padding:5px 10px"><tt>void loop() {<br />
+&nbsp; digitalWrite(LED_1, HIGH);<br />
+&nbsp; delay(250);<br />
+&nbsp; digitalWrite(LED_1, LOW);<br />
+&nbsp; delay(250);<br />
+}</tt></div>
+
+<p>&nbsp;</p>
+
+<p>My UDOO Board is wired with a single LED / resistor pair as shown in <a href="https://www.dropbox.com/s/b7dvi2zli721lf5/udoo_led.jpg">this picture</a>.</p>
+
+<p>Nothing too difficult, just a proof of concept. I verified that the sketch and the circuit functioned correctly using the Arduino IDE that is provided in the Desktop GUI to rule out any problems with the hardware.</p>
+
+<p>&nbsp;</p>
+
+<p><strong>Command Line</strong></p>
+
+<p>My first attempt has been to use the <a href="http://inotool.org/">Ino</a>&nbsp;open source library available on github. Ino is a command line tool that can build and upload sketches to a Arduino board from the command line. Just the thing I needed!</p>
+
+<p>First I first tried installing Ino from source (downloading from github and running the <tt>make</tt> file.) Six missing dependencies later, I gave this up and tried a different approach.</p>
+
+<p>I installed <tt>pip</tt> (a package manager tool for Python):</p>
+
+<div style="background:#eee; border:1px solid #ccc; padding:5px 10px"><tt>sudo apt-get install python-pip</tt></div>
+
+<p>&nbsp;</p>
+
+<p>With <tt>pip </tt>installed I could install <tt>ino</tt> with all its dependencies automatically.</p>
+
+<div style="background:#eee; border:1px solid #ccc; padding:5px 10px"><tt>sudo pip install ino</tt></div>
+
+<p>&nbsp;</p>
+
+<p>With <tt>ino</tt> installed I could test to see if it could see my Arduino board. By running:</p>
+
+<div style="background:#eee; border:1px solid #ccc; padding:5px 10px"><tt>ino list-models</tt></div>
+
+<p>&nbsp;</p>
+
+<p>Immediately this failed with the complaint that it could not find <tt>boards.txt</tt> (which defines what Arduino devices are available and how to communicate with them.) Conveniently however, it listed where it was looking.&nbsp;</p>
+
+<p>I discovered that on the UDOO board, the Arduino tools were not installed in <tt>/usr/share/arduino/</tt> where <tt>ino</tt> expected it, but rather in <tt>/opt/arduino-1.5.4</tt>.</p>
+
+<p>My first solution was to create a soft link between <tt>/usr/share/</tt> and <tt>/opt/</tt>. Like so:</p>
+
+<div style="background:#eee; border:1px solid #ccc; padding:5px 10px"><tt>sudo ln -s /opt/arduino-1.5.4 /usr/share/arduino</tt></div>
+
+<p>&nbsp;</p>
+
+<p>I later realized that <tt>ino</tt> can also take a parameter indicating where to look for Arduino:</p>
+
+<div style="background:#eee; border:1px solid #ccc; padding:5px 10px"><tt>ino list-models -d /opt/arduino-1.5.4/</tt></div>
+
+<p>&nbsp;</p>
+
+<p>Which may be cleaner depending on your use case.&nbsp;</p>
+
+<p>Unfortunately, both of these proved to be only partial fixes. When trying to find <tt>boards.txt</tt>, <tt>ino</tt> only looks in <tt>&lt;ARDUINO&gt;/hardware/arduino</tt> directories. As of Arduino 1.5 and later, there can be subdirectories (<tt>/sam</tt> in the case of a UDOO board), which <tt>ino</tt> does not scan.</p>
+
+<p><em>NOTE: This is the point at which I lost my dignity as a programmer and devolved into a hacker who just wanted to make this thing work. In retrospect, this is also probably also the point where I should have started trying something else instead of <tt>ino</tt>... But oh well.&nbsp;Too late for that...</em></p>
+
+<p>So I decided to relocate the contents of the <tt>sam</tt> directory into its parent directory.</p>
+
+<div style="background:#eee; border:1px solid #ccc; padding:5px 10px"><tt>cp -R /opt/arduino-1.5.4/hardware/arduino/sam/*&nbsp;/opt/arduino-1.5.4/hardware/arduino</tt></div>
+
+<p>&nbsp;</p>
+
+<p>That fixed <tt>ino</tt>&#39;s immediate issues, I finally got the <tt>list-models</tt> command to execute successfully:</p>
+
+<div style="background:#eee; border:1px solid #ccc; padding:5px 10px"><tt>arduino_due_x_dbg: Arduino Due (Programming Port)<br />
+arduino_due_x: Arduino Due (Native USB Port)</tt></div>
+
+<p>&nbsp;</p>
+
+<p>That looked much better! I was then able to successfully initialize an <tt>ino</tt> project:</p>
+
+<div style="background:#eee; border:1px solid #ccc; padding:5px 10px"><tt>mkdir ~/arduino_blink</tt></div>
+
+<div style="background:#eee; border:1px solid #ccc; padding:5px 10px"><tt>cd arduino_blink</tt></div>
+
+<div style="background:#eee; border:1px solid #ccc; padding:5px 10px"><tt>ino init -t arduino_blink&nbsp;</tt></div>
+
+<p>&nbsp;</p>
+
+<p>I modified the source code to match my sketch above and tried to build the <tt>ino</tt> project:</p>
+
+<div style="background:#eee; border:1px solid #ccc; padding:5px 10px"><tt>ino build -m arduino_due_x_dpg</tt></div>
+
+<p>&nbsp;</p>
+
+<p>Errr... After processing for several minutes, this command failed with the rather crypted make error &quot;argument list too long&quot;. Turns out that <tt>ino</tt> recursively links the libraries it finds in the Arduino installation directory. If you have a lot of system libraries, this can generate an enormous list and kill the tool chain because there are too many parameters.</p>
+
+<p>The workaround that I discovered was to simple relocate the Arduino libraries elsewhere. (See note about turning from programmer to hacker... I&nbsp;<em>have&nbsp;</em>to beat this thing now!)</p>
+
+<div style="background:#eee; border:1px solid #ccc; padding:5px 10px"><tt>sudo mv /opt/arduino-1.5.4/libraries&nbsp;/opt/arduino-1.5.4/libraries_BAK</tt></div>
+
+<div style="background:#eee; border:1px solid #ccc; padding:5px 10px"><tt>sudo mkdir /opt/arduino-1.5.4/libraries</tt></div>
+
+<p>&nbsp;</p>
+
+<p>Repeating the build command progressed&nbsp;<em>much&nbsp;</em>more quickly this time!</p>
+
+<p>The next error it spit out was that it could not find <tt>avr-gcc</tt> (its default tool chain command). Seems reasonable. After looking around I see that there is a&nbsp;<tt>/opt/arduino-1.5.4/hardware/tools/arm-none-eabi/arm-none-eabi/bin/gcc</tt> tool which looks more promising. Even better, the running:</p>
+
+<div style="background:#eee; border:1px solid #ccc; padding:5px 10px"><tt>ino build --help</tt></div>
+
+<p>&nbsp;</p>
+
+<p>Indicates that there is a <tt>--cc</tt> parameter that allows you to overwrite the default compiler.&nbsp;</p>
+
+<p>I will save you the long succession, but it turns out that ino build also wants a <tt>g++</tt>, an <tt>ar</tt>, and an <tt>objcopy</tt> tool, all of which have parametric overrides in the <tt>build</tt> command. It was not long before my <tt>build</tt> command had swelled to:</p>
+
+<div style="background:#eee; border:1px solid #ccc; padding:5px 10px"><tt>ino build -m arduino_due_x_dbg --cc /opt/arduino-1.5.4/hardware/tools/arm-none-eabi/arm-none-eabi/bin/gcc --cxx /opt/arduino-1.5.4/hardware/tools/arm-none-eabi/arm-none-eabi/bin/g++ --ar /opt/arduino-1.5.4/hardware/tools/arm-none-eabi/arm-none-eabi/bin/ar --objcopy /opt/arduino-1.5.4/hardware/tools/arm-none-eabi/arm-none-eabi/bin/objcopy</tt></div>
+
+<p>&nbsp;</p>
+
+<p>And this brings us to the finale:</p>
+
+<div style="background:#eee; border:1px solid #ccc; padding:5px 10px"><tt>unrecognized command line option &#39;-mmcu=cortex-m3&#39;</tt></div>
+
+<p>&nbsp;</p>
+
+<p>This is where I am currently stumped. All my hackery has been for naught thus far. So I present the challenge to my readers. <strong>What next?</strong>&nbsp;</p>
+
+<p>Should I abandon ino and try a different approach?&nbsp;</p>
+
+<p>Did I just pick the wrong tool chain?</p>
+
+<p>Did I miss an obvious means of installing <tt>avr-gcc</tt>?</p>
+
+<p>That is the challenge! What is next?</p>
+
+<p>Should I overcome this challenge I will update this blog. But if you figure it out first, sound off in the comments!&nbsp;</p>
+
+<p>&nbsp;</p>
+
+<p>Questions? Comments? Give me a shout&nbsp;out at: smouring@sequoiainc.com!</p>
+
+<p>&nbsp;</p>

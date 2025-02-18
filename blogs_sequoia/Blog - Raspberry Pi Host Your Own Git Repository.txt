@@ -1,0 +1,106 @@
+<p>I recently started on a software collaboration with another developer. Given the distance between us and the need to work remotely, we made the choice to use <em>git</em> for source control.</p>
+
+<p>Since our project could eventually have commercial applications we wanted some privacy, so at first we first looked at setting up a &quot;hidden&quot; repository on Github. That however requires a monthly membership fee and we are on a low budget.</p>
+
+<p>After briefly considering a few other options (a git repo synced via Dropbox or SpiderOak for example) I had a flash of sudden inspiration. Why not turn one of my three <a href="http://www.raspberrypi.org/">Raspberry Pis</a> to host a git repository?</p>
+
+<p>In an impressive tribute to the Raspberry Pi&#39;s versatility my partner and I accomplished this in less than 10 minutes!</p>
+
+<p>There are basically three steps to setup your Raspberry Pi so it can be used as a central git repository:</p>
+
+<ol>
+    <li>Assign a static IP address to the Raspberry Pi</li>
+    <li>Port forward your Pi&#39;s SSH port&nbsp;</li>
+    <li>Setup a git repo and connect to it remotely</li>
+</ol>
+
+<h3><strong>Static IP</strong></h3>
+
+<p>Assigning a static IP address is fairly straightforward. You need to modify your network interfaces file:</p>
+
+<div style="background:#eee; border:1px solid #ccc; padding:5px 10px"><tt>sudo vi /etc/network/interfaces</tt></div>
+
+<p>You should see a line that says:</p>
+
+<div style="background:#eee; border:1px solid #ccc; padding:5px 10px"><tt>iface eth0 inet dhcp</tt></div>
+
+<p>This is the configuration for your Raspberry Pi&#39;s Ethernet port. By default it is configured to use the DHCP service on your Router to automatically assign it an unused IP address on your home network. For most cases this is what you want. After all, who wants to manually assign IP addresses to every device on their network? However, the problem with using DHCP is that you cannot depend on your Raspberry Pi always having the same IP address. This makes it hard to connect via SSH and so forth.</p>
+
+<p>The first step is to reconfigure your Router&#39;s DHCP service to reserve a block of IP addresses that you can assign yourself. By default most routers are configured to assign IP address from the <tt>192.168.1.2</tt> to <tt>192.168.1.255</tt> range (with <tt>192.168.1.1 </tt>reserved for the router itself). You want to shrink this range to leave you a few IP addresses at either end that you can assign yourself.</p>
+
+<p>Instructions are different for every router. Usually you connect to <tt>http://192.168.1.1/</tt> and then log into your router using your router&#39;s administrative user name and password. Find your network&#39;s DHCP settings. These are often buried in the Advanced Settings page for your network.</p>
+
+<p>Somewhere in those settings it should define the start and end of the range of IP addresses that DHCP will assign. Modify either the start or the end to reserve some IP address for yourself. (My home configuration is that DHCP assigns <tt>192.168.1.2</tt> to <tt>192.168.128</tt> leaving the range of <tt>192.168.129</tt> to <tt>192.168.1.255</tt> to assign statically as I choose.)</p>
+
+<p>Once that is done, you can select an IP for your Raspberry Pi. Personally, I keep a list on my computer of static IP address and what I have assigned them to on my network so I do not accidentally create an IP address conflict. A little bit of bookkeeping can save you a lot of headache later!</p>
+
+<p>Edit the interfaces file again:</p>
+
+<div style="background:#eee; border:1px solid #ccc; padding:5px 10px"><tt>sudo vi /etc/network/interfaces</tt></div>
+
+<p>And replace:</p>
+
+<div style="background:#eee; border:1px solid #ccc; padding:5px 10px"><tt>iface eth0 inet dhcp</tt></div>
+
+<p>With:</p>
+
+<div style="background:#eee; border:1px solid #ccc; padding:5px 10px"><tt>iface eth0 inet static<br />
+address 192.168.1.&lt;STATIC IP ADDRESS&gt;<br />
+netmask 255.255.255.0<br />
+gateway 192.168.1.1</tt></div>
+
+<p>&nbsp;</p>
+
+<p><em>Note: If you have a different gateway IP (which is the IP of your router) or a different netmask, substitute those values accordingly. What I list are the common defaults.</em></p>
+
+<p>Reboot your Raspberry Pi. It should now be using its static IP!</p>
+
+<h3><strong>Port Forwarding</strong></h3>
+
+<p>The Raspberry Pi should have SSH installed by default. If you have not enabled SSH on your Raspberry Pi you can do so by running:</p>
+
+<div style="background:#eee; border:1px solid #ccc; padding:5px 10px"><tt>sudo raspi-config</tt></div>
+
+<p>And choosing Advanced Options -&gt; SSH and setting it to Enable. Reboot your Raspberry Pi.</p>
+
+<p>At this point you should be able to use an SSH client (such as PuTTY) to connect to your Raspberry Pi from within your home network. Verify you can connect using its static IP and the &quot;pi&quot; user name / password.</p>
+
+<p>At this point your Raspberry Pi could be used to host a git repository <em>within</em> your home network. That may be enough for some folks, so you can skip to the next section if you so choose.</p>
+
+<p>If you want to able to connect to your git repository from the internet, you will need your router to forward your SSH port. This exposes that port on your router and allows outside connections to access your Raspberry Pi from the internet.</p>
+
+<p>You willl need to log into your router once more. As before, each router is going to be different, but most have a Port Forwarding settings page or something like that. You will want to enter or select your Raspberry Pi&#39;s IP address as the source IP and your SSH port as the port to forward. SSH defaults to port 22, but you may decided to change it by editing the <tt>/etc/ssh/sshd_config</tt> file and replacing the <tt>Port 22</tt> line with a different port number.</p>
+
+<p>While you are logged into your router, make note of the router&#39;s external IP address (this is not your Gateway IP which typically starts with <tt>192.168</tt>, this is the IP your ISP has assigned you.)</p>
+
+<p>Once the port forwarding rule is setup, you should be able to connect to your Raspberry Pi from the internet. Open up an SSH client (such as PuTTY) and connect using your external IP address and your &quot;pi&quot; user name / password. If you can successfully connect, then you are done!</p>
+
+<p><em>Note: If you cannot readily find your external IP address you can visit: <a href="http://www.whatismyip.com">www.whatismyip.com</a> and it will display it for you.</em></p>
+
+<h3><strong>Git Repository</strong></h3>
+
+<p>All the connection infrastructure should be set up for you to connect to you Raspberry Pi from inside or outside your network. Now all you need to do is set up a git repository!</p>
+
+<p>Log into your Raspberry Pi. Create the directory where you want your git repository to reside (<tt>/opt/git/sandbox/</tt> for example). Create a git repository there:</p>
+
+<div style="background:#eee; border:1px solid #ccc; padding:5px 10px"><tt>git init</tt></div>
+
+<div style="background:#eee; border:1px solid #ccc; padding:5px 10px"><tt>git checkout -b EMPTY</tt></div>
+
+<p><em>Note: By default git creates a &quot;master&quot; branch. Most development paradigms however actually use the master branch as part of their workflow. In git you cannot push to a branch that is checked out upstream. The workaround is to create a dummy branch (the EMPTY branch above) which remains checked out. This leaves the master branch free to be pushed to from clients downstream. </em></p>
+
+<p>Now go to your development machine. You can clone this repository via:</p>
+
+<div style="background:#eee;border:1px solid #ccc;padding:5px 10px;"><tt>git clone ssh://pi@&lt;IP ADDRESS&gt;:&lt;SSH PORT&gt;/&lt;YOUR PATH&gt; .</tt></div>
+
+<p>For example:</p>
+
+<div style="background:#eee;border:1px solid #ccc;padding:5px 10px;"><tt>git clone ssh://pi@173.12.16.124:22/opt/git/sandbox/ .</tt></div>
+
+<p>If you are going to be accessing this repository away from your home network then &lt;IP ADDRESS&gt; should be your external IP address (see Port Forwarding section above). If you are only going to be accessing this repository on your internal home network then &lt;IP ADDRESS&gt; should be the static ip address you assigned your Raspberry Pi.</p>
+
+<p>&nbsp;</p>
+
+<p>Questions? Comments? Email me at: smouring@sequoiainc.com</p>
+
+<p>Happy coding!</p>

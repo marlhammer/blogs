@@ -1,0 +1,133 @@
+<p><em>This is intended as a &quot;my thoughts on this topic&quot; blog, not as an exhaustive scientific essay on software development and human nature. This is a rant post. Take it or leave it and share your thoughts in the comments!</em></p>
+
+<p>I believe that as a software developer it is my calling to write&nbsp;<em>good</em> software. Not just software.&nbsp;<em>Good&nbsp;</em>software. In the same way that the medical profession&#39;s calling is to promote their patient&#39;s health, and the law profession&#39;s calling is to defend the interests of their client, so I think should the programmer&#39;s calling require a high standard of quality, maintainability, and forward thinking in the software that they write.</p>
+
+<p>I find the perception which has pervaded the software engineering industry that programmers are slobby, slothful hackers who cut corners to &quot;make it work&quot; both offensive and inaccurate. I strive to work beyond this perception.</p>
+
+<p>But part of acting as professional is to keep the pendulum from moving too far in the other direction. (Or, perhaps instead, to not do things that &quot;feel&quot; professional but are not really.)</p>
+
+<p>In an effort to write good software, the industry has come up with many&nbsp;&quot;best practices&quot; that are held up as a standard to work towards.&nbsp;Unit testing is a best practice. Continuous integration is a best practice. Test driven development is a best practice. Refactoring is a best practice. Agile development is a best practice.</p>
+
+<p>And they probably&nbsp;are... <em>in most cases</em>.</p>
+
+<p>I am not against any of these practices. I agree with all the ones I listed (except maybe test driven development... but that is for another blog) and I have practiced, am practicing, or am working towards practicing all of them.</p>
+
+<p>The problem that concerns me is that best practices are taken for granted. In fact, I often hear the term &quot;best practice&quot; as a blanket justification or a way of ending an argument.&nbsp;</p>
+
+<p>&quot;Why do we do that? Well... It&#39;s a best practice.&quot;</p>
+
+<p>&quot;I understand your concerns, but we need to do this because it is a best practice...&quot;</p>
+
+<p>&quot;No, but you don&#39;t understand... This is a best practice.&quot;</p>
+
+<p>That bothers me.</p>
+
+<p>Why? Because when you blindly follow a practice just because it is a &quot;best practice&quot; you have stopped thinking critically about what you are doing. And when you stop thinking, you are less likely to write <em>good</em> code.</p>
+
+<p>As I wrote this I realized that I started a lot of sentences with &quot;I think&quot;, &quot;in my opinion&quot;, and &quot;my belief&quot;... I do not pretend to be an expert in the topics of human psychology and its application to software development. These are just a collection of thoughts and observations that I have forged over time in my personal experience.</p>
+
+<p>I am always open to counter arguments (and, in fact, that is a core part of the point I am making... Never cling to dogma at the expense of critical thinking.) I am not trying to persuade you of a certain position. My only goal is to inspire you to take a look at <em>why</em> you do what you do and evaluate if it still makes sense in your context.</p>
+
+<p>&nbsp;</p>
+
+<p><strong>Principals versus Practices</strong></p>
+
+<p>I think there is a very helpful distinction to be made between &quot;best practices&quot; and &quot;best principals&quot;. A principal is abstract. It is applied to circumstances on a case by case basis. A principal is something like &quot;encapsulation&quot; or &quot;keep it simple&quot; or &quot;do not repeat yourself&quot;. It is a concept that can be manifested in many ways and is understood to have a positive benefit.</p>
+
+<p>A practice is an application of a principal to a situation. A practice is something like &quot;make your methods 50 lines or less&quot;, &quot;use getters/setters to manipulate object state&quot;, or &quot;call classes through interfaces&quot;. The practice is a rule of thumb that implements the principal.</p>
+
+<p>The problem is that best practices are just that, rules of thumb. Like all rules of thumb, they <em>do not always apply</em>. But as developers (or even as managers) we be so fixated on the &quot;we must follow best practices&quot; mantra that they miss the nuance of a specific situation.</p>
+
+<p>I was in a code review (<em>not</em> a best practice in my opinion...) where a class was reviewed much like the following:</p>
+
+<div style="background:#eee; border:1px solid #ccc; padding:5px 10px"><tt>class Coordinates {<br />
+&nbsp;&nbsp;&nbsp; public final int x;<br />
+&nbsp;&nbsp;&nbsp; public final int y;</tt></div>
+
+<div style="background:#eee; border:1px solid #ccc; padding:5px 10px"><tt>&nbsp;&nbsp;&nbsp; public Coordinates(int x, int y) {<br />
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; this.x = x;<br />
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; this.y = y;<br />
+&nbsp;&nbsp;&nbsp; }<br />
+}</tt></div>
+
+<p>&nbsp;</p>
+
+<p><em>NOTE: Names and context changed to protect the innocent.</em></p>
+
+<p>You will notice that the <tt>x</tt> and <tt>y</tt> members are <tt>public final</tt> and that there is no getter method. The programmer was dinged in the review and told to use a getter instead.</p>
+
+<p>He proceeded to make what I thought was a compelling argument for why a getter method was both unnecessary and counter productive. These are primitive types. They are immutable. The code that used this class used those members extensively. Adding a getter method would dramatically swell the code and make it harder to read / visually parse. He even argued that there was a&nbsp;(<em>slight</em> admittedly) performance loss due to the method call overhead.</p>
+
+<p>The response?</p>
+
+<p>&quot;Using getter methods is a best practice. Change it.&quot;</p>
+
+<p>I find that distressing. Yes, using getter methods <em>is</em> a good rule of thumb. It insulates your code from internal changes to a class and promotes encapsulation. But <em>in this case</em> the developer under review made a strong counter argument based on the context and other principals (such as readability).</p>
+
+<p><em>That</em> is a problem with the &quot;best practices&quot; mindset. Ignoring edge cases or even just some critical thinking about a given context, in favor of applying a best practice.</p>
+
+<p>I think that in software development (and actually in all of life) you should focus on understanding and applying <em>principals</em> and not following scripted applications of those principals. Understand encapsulation. What it is. Why it is important. How to apply it. But also understand the tradeoffs! Do not become myopic in apply one principal (encapsulation in the example above) at the expense of other principals (clarity and readability).</p>
+
+<p>&nbsp;</p>
+
+<p><strong><em>Everything </em>Has Cost vs Benefit </strong></p>
+
+<p>An underlying issue that I think is not well addressed in the software development industry as it stands is that <em>everything</em> has a cost. Bad things have a cost (I <em>love</em> the concept of <a href="https://en.wikipedia.org/wiki/Technical_debt">technical debt</a> as a metaphor for explaining this...) But good things have a cost too!</p>
+
+<p>Many best practices require hard work to apply. Writing unit tests takes a lot of developer time. Continuous Integration takes time to setup and effort to maintain. Refactoring is <em>hard</em>, and its even harder to <a href="http://blogs.sequoiainc.com/blogs/refactoring-change-your-project-s-culture">convince customers</a> that it is important thing to do sometimes.</p>
+
+<p>We can get so caught up in extolling the virtues of a particular best practice (&quot;Unit tests give you the courage to refactor!&quot;, &quot;Continuous Integration let&#39;s us deploy to Production in minutes instead of hours!&quot;) that we <em>understate </em>or <em>mis-evaluate</em> the costs of the practice.</p>
+
+<p>In most cases, like the ones listed above, we would argue that the benefit outweighs the cost and then dismiss it from our minds. But I think it is important to have that argument (at least in your head) each and every time you make a commitment to changing your software development process. Keep the cost/benefit analysis always on the forefront of your mind and do not take it for granted.</p>
+
+<p>One reason is that we can also easily miss <em>different kinds </em>of cost. Cost is not just time and effort. Cost can be the effort on project culture or software architecture.</p>
+
+<p>I will pick a controversial example... Unit Testing.</p>
+
+<p>Unit Testing has a lot of benefits. It captures knowledge about your code (such as expected behavior and past bugs) and constantly applies that knowledge to your code. It allows you to make changes with less fear of introducing bugs. It saves a lot of time and eliminates some manual work required to test code.</p>
+
+<p>Unit Testing has a direct cost in terms of time and effort. It often takes as least as much time to write the tests as it does the code. Frameworks and libraries help mitigate this, but it still is a cost.</p>
+
+<p>If that was all, I would argue that, in almost every case, unit testing&#39;s benefits outweigh the cost.</p>
+
+<p>But there is another problem... Unit Testing increases the cost of refactoring. I think it is impossible to write tests in such a way that they are un-impacted by rearchitecting your code. (Maybe, unless your code is already very very well architected, in which case, you probably do not need to refactor!)</p>
+
+<p>My observation is that unit tests <em>contribute</em> <em>resistance</em> to refactoring, because they further increase the time/effort to refactor. <a href="http://blogs.sequoiainc.com/blogs/refactoring-change-your-project-s-culture">My opinion</a> is that refactoring is <em>essential</em> to the health of software, so this cost is not insignificant.</p>
+
+<p>As a personal example, I started working on a project that, while generally well architected, was in need of significant refactoring. (In the end, we reduced the code base from 250,000+ lines of Java to 38,000 lines of Java while adding several major pieces of functionality... That&#39;s a lot of refactoring!)</p>
+
+<p>The project already had a fleet of unit tests associated with it, but, since so much refactoring was called for, we actually abandoned the unit tests completely. After about a year of refactoring with the code base now 20% of what it was, the code base is much more stable. We are making far fewer sweeping changes, and are now prioritizing reintroducing unit tests.</p>
+
+<p>The cost and benefit was weighed. In the short to mid term we prioritized refactoring over unit testing. Now that the major refactoring is winding down, unit testing is getting re-prioritized. That seems reasonable to me.</p>
+
+<p>Some people are appalled and we disposed of the unit tests. Why? &quot;Unit testing is a best practice!&quot;</p>
+
+<p>Whatever.</p>
+
+<p>&nbsp;</p>
+
+<p><strong>Rules of Thumb and Breaking The Rules</strong></p>
+
+<p><em>NOTE: Not to be confused with rules against breaking your thumb...</em></p>
+
+<p>I want to write a whole blog about Process / Rules of Thumb and the Human Mind, but this blog probably is not that. Just wanted to close with some observations about levels of expertise and how they apply to the issue of best practices.</p>
+
+<p><em>NOTE: I am indebted to <a href="https://pragprog.com/book/ahptl/pragmatic-thinking-and-learning">this book</a> for introducing me to these concepts and particularly the Dreyfuss model which I discuss below. A highly recommend read!</em></p>
+
+<p>The <a href="https://en.wikipedia.org/wiki/Dreyfus_model_of_skill_acquisition">Dreyfuss Model of Skill Acquisition</a> is a psychological framework proposed in the 80s by two brothers (Stuart and Hubert Dreyfuss) that models how human learn and improve at skills. I will defer a lengthier discussion to a future blog post, but the key point that I to derive from it is how rules (or best practices for our discussion) affect the performance of people at different expertise levels.</p>
+
+<p>The Dreyfuss model proposes five levels of expertise: Novice, Advanced Novice, Competent, Proficient, and Expert. At earlier levels of proficiency, the practitioner (or software developer in our case) <em>benefits</em> from following recipes or procedures. (The common analogy is to cooking. As you learn to cook, you rely on recipes. For a novice cook, cooking from a recipe gives a better result than just winging it.)</p>
+
+<p>However as the practitioner increases in proficiency, recipes and procedures start to <em>hinder</em> their results. Things like intuition and subconscious instincts play a larger role and being forced to adhere to strict procedures decreases the quality of the result. (Again, which cooking, this is like requiring a chef to rigorous follow a recipe. Deprived of his ability to make judgment calls, tweaks, or add flair,&nbsp;he gives a worse result than possible with improvisation.)</p>
+
+<p>My belief is that this principal applies with equal force to best practices. A best practice is like a recipe. It makes sense most of the time. For a fledgling programmer, relying on best practices is likely to improve the quality of their output. But as a programmer transition to that of an expert, blindly following best practices decrease the quality of the output. An expert has the judgment to know where the rules of thumb are inadequate and when to break the rules.</p>
+
+<p>&nbsp;</p>
+
+<p>That concludes my thoughts on that subject! Agree or disagree, I hope that you will make an effort to examine the practices you have in place and see if they make sense to you!</p>
+
+<p>&nbsp;</p>
+
+<p>Questions? Comments? Email me at: smouring@sequoiainc.com!</p>
+
+<p>&nbsp;</p>

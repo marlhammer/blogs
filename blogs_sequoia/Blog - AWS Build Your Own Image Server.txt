@@ -1,0 +1,125 @@
+#### Introduction
+
+A few years ago my company switched our corporate blog platform from a WordPress instance to [Ghost](https://ghost.org/). 
+
+Ghost is an outstanding blogging tool. It is simple. Elegant. Easy to use. It meets my personal Occam's Razor of usability: all the features I need but no more.
+
+The only problem I had was finding out how to upload images. Ghost had the capability to *link to images that were already hosted*, but for the last two years I could not figure out how to upload images directly into Ghost.
+
+Instead of reading the manual, Googling a solution, or asking for help, I did what any self respecting programmer would do... I wrote my own image server running globally over HTTPS on a custom domain name! And now, with this blog, you can too!
+
+*(Full Disclosure: **After** building my image server, I finally found the interface on Ghost to upload images... User error or bad interface design? You decide. But the experience of creating an elegant solution to a personal problem is both rewarding and educational, and you can use an image server (or a file server which is what this really is) for many other things anyway, so here we go!)*
+
+#### Your Own Image Server
+
+AWS S3 is a solid starting place for an image server. In addition to its reliability and relatively low cost, S3 has the capability for making a bucket publicly accessible, which means file stored in that bucket can be served out directly over HTTP/HTTPS. With the roll out of the new console interface for AWS, this process has become considerably more streamlined.
+
+Log into your AWS Management Console. Go to S3 and create a bucket. 
+
+![Step 1](https://images.stephenmouring.name/blog/image_server_step1.png)
+
+On the `Set permissions` step of the Create Bucket Wizard you will have a chance to set the `Manage public permissions` option to `Grant public read access to this bucket`. 
+
+![Step 2](https://images.stephenmouring.name/blog/image_server_step2.png)
+
+This will enable HTTP/HTTPS access to this bucket. 
+
+Once this is done you will want to create a directory structure inside your bucket to manage your content. The exact organization is up to you. I created an `images` folder with a `blog` subfolder since in the future I might use this "image server" for other types of images or even for other types of file altogether.
+
+![Step 3](https://images.stephenmouring.name/blog/image_server_step3.png)
+
+As an exercise, go ahead and upload an example image file.
+
+Be aware that even though the bucket is public, each file you upload will also need to be made public as well.
+
+![Step 4](https://images.stephenmouring.name/blog/image_server_step4.png)
+
+Once you have uploaded a file, you can see the URL to access that file in the file's Properties page in the S3 Console.
+
+![Step 5](https://images.stephenmouring.name/blog/image_server_step5.png)
+
+Here is an example:
+
+```
+https://s3.amazonaws.com/stephenmouring-image-server/images/blog/example_image.jpg
+```
+
+![Example Image S3](https://s3.amazonaws.com/stephenmouring-image-server/images/blog/example_image.jpg)
+
+Congratulations! You now have a simple and reliable image server built on S3!
+
+#### Globally
+
+But why stop there? 
+
+What if you want all your images to be cached **globally** at dozens of data centers around the world to minimize their load times??
+
+This lofty goal is easily achievable by putting an AWS CloudFront distribution in front of your S3 Bucket!
+
+To do this, go to the AWS Management Console and go to CloudFront. Click `Create Distribution` and opt for a `Web` distribution type.
+
+For `Origin Domain Name` you will want to select your S3 bucket (pre-populated in the dropdown list). You can also specify a S3 folder prefix under `Origin Path`. This lets you create different CloudFront distributions for different S3 folders, which means you can cache different kinds of content with different rules. You can also choose to disable the direct S3 URLs via the `Restrict Bucket Access` option (although this is not necessary in our case).
+
+![Step 6](https://images.stephenmouring.name/blog/image_server_step6.png)
+
+CloudFront is a complex beast, with many options to control security, caching, and other distribution characteristics. For our purposes it is safe to accept the default options for now and we will revisit some of them later.
+
+Once your distribution has been created and is fully deployed you can now use its DNS name to access your content like this:
+
+```
+https://dxnjrp250socj.cloudfront.net/blog/example_image.jpg
+```
+
+![Example Image CloudFront](https://dxnjrp250socj.cloudfront.net/blog/example_image.jpg)
+
+Congratulations! You now have a **global** image server!
+
+#### Securely
+
+But wait! There is more! 
+
+What if you want to serve your content over your own domain name via HTTPS?
+
+*Note: If you do not have a domain name, you can easily register one through AWS Route 53. In my example below, I am leveraging my `stephenmouring.name` domain that I already had registered.*
+
+To make this work you need to achieve two steps. First you need to have your domain name redirect traffic to your CloudFront distribution. then, you need to create a signed certificate for your domain name and associate it with your CloudFront distribution.
+
+The first step requires you to add a record to your domain name's record set. In my case I am using Route 53 to manage my domain name DNS. Since I use `stephenmouring.name` for many different purposes, I chose to use a subdomain: `images.stephenmouring.name`
+
+I added an `A record` to my record set that pointed the subdomain `images` as an `Alias` (make sure to check `Yes` in the `Alias` toggle box!) to my CloudFront distribution as an `Alias Target`.
+
+![Step 7](https://images.stephenmouring.name/blog/image_server_step7.png)
+
+So now, all `images.stephenmouring.name` traffic will be directed to the CloudFront distribution. The second step is to prepare the CloudFront distribution to accept that traffic!
+
+We do this by requesting a custom security certificate from the AWS Certificate Manager service. I recommend that you request a single certificate that can be used for all your subdomains (using a `*.` prefix as shown below). This will save you the hassle of requesting a certificate for each subdomain in the event that you want to use a certificate in AWS in the future.
+
+![Step 8](https://images.stephenmouring.name/blog/image_server_step8.png)
+
+So here is a major gotcha. Amazon requires that you verify that you own a domain before you can register a certificate for it. It does this verification through an email. It will use the email registered with the domain in [WHOIS](https://whois.icann.org/en). However, if you opted for the privacy option when registering your domain it will use a set of five common admin emails (`admin@<hostname>`, `info@<hostname>`, etc.)
+
+If there is no way to respond on one of those emails you will be unable to register your certificate! This represents a considerable catch 22 since we are only using the domain for CloudFront and it does not have any infrastructure behind it.
+
+My workaround is not for the faint of heart (but was really fun nonetheless!) I signed up for a free account via [Zoho](https://www.zoho.com/mail/) set it up as the provider for [my custom domain](https://www.zoho.com/mail/help/adminconsole/configure-email-delivery.html). I then created an `admin` account (which meant I had an `admin@stephenmouring.name` email) that was capable of accepting the verification from AWS Certificate Manager. 
+
+This took a lot of work but was a good learning experience and is a good workaround to avoid having your personal details publish in WHOIS for your domain name!
+
+Once you have your certificate in hand, you can return to AWS CloudFront, and edit your distribution. You will want to change two things: the CNAME used and the security certificate.
+
+![Step 9](https://images.stephenmouring.name/blog/image_server_step9.png)
+
+Once your distribution finishes deploying your changes you can then access images over your custom domain name like this:
+
+```
+https://images.stephenmouring.name/blog/example_image.jpg
+```
+
+![Example Image CloudFront](https://images.stephenmouring.name/blog/example_image.jpg)
+
+Congratulations! You now have a **secure** image server running on your **own domain name**!
+
+#### Conclusion
+
+Is this an overkill solution for hosting images to link from a blog site? Yes. Is this a rewarding learning experience that teaches you about S3, CloudFront, Route 53, DNS and other good things? Yes, absolutely!
+
+I hope you found this useful! Email me at smouring@sequoiainc.com with any comments, questions!

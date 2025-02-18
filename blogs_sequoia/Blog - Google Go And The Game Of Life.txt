@@ -1,0 +1,225 @@
+##### Introduction
+
+In my [prior blog post](http://blogs.sequoiainc.com/raspbery-pi-welcome-to-google-go/) I started a foray into the world of Google Go, using the Raspberry Pi as my platform. While snowed in this past week I turned that foray into a skirmish and tackled a more challenging project!
+
+I have always been interested in [The Game Of Life](https://en.wikipedia.org/wiki/Conway%27s_Game_of_Life) (Conway's not Milton Bradley's that is, although both are enjoyable) as a concept and I realized that I have never taken it in hand to actually implement it on my own. It makes an excellent "201" project once you have "Hello World" and maybe even "FizzBuzz" under your belt.
+
+The "game" is really a simulation of cell life cycles. It is "played" out one a board (an infinite grid) in a series of rounds. Each cell of the board is either dead or alive. In each round the board is examined and the following rules are applied *simultaneously* to each cell:
+
+* A living cell with less than 2 live neighbours dies (loneliness).
+* A living cell with 2 to 3 live neighbours lives on to the next round.
+* A living cell with greater than 3 live neighbours dies (crowded).
+* A dead cell with 3 live neighbours becomes a live cell (reproduction).
+
+As you might imagine this causes a rapidly changing colony of cells that can exhibit a number of interesting patterns. You can play around with a working implementation [here](http://www.bitstorm.org/gameoflife/).
+
+Implementing the game of life (from here on referred to as GOL) gives some exposure to the next level of language constructs. We already did basic functions and variables in the [first blog post](http://blogs.sequoiainc.com/raspbery-pi-welcome-to-google-go/). The GOL will introduce us to `if` statements, `for` loops, arrays/slices, and a more advanced use of functions.
+
+Let's get started!
+
+##### The Code
+
+*NOTE: The code can be downloaded in its entirety [from GitHub](https://gist.github.com/marlhammer/8896131a875972296ae2).*
+
+For my implementation I made the simplification of using a finite board instead of an infinite one. I will leave it as an exercise for the reader to convert it to use an infinite board. (Hint: Slices in Go can be dynamically re-sized!)
+
+At a high level my design is to initialize a board with a starting board state. (A "seed" colony if you will...) I then iterate for a fixed number of rounds, optionally outputting the board state at each round.
+
+For each round I make a copy of the board, use the board to apply the rules to the board copy, and then recursively start the next round on the updated board copy.
+
+```
+package main
+
+import (
+    "fmt"
+)
+```
+
+Nothing unusual here... In my next blog post I intend to deep dive into Go's package structure, but for now, everything is going into `main`.
+
+```
+func main() {
+    board_size := 30
+
+    board := make([][]int, board_size)
+    for i := range board {
+        board[i] = make([]int, board_size)
+    }
+```
+
+I start with a variable (`board_size`) that holds the desired board size to use in initializing the board.
+
+The board is implemented as a slice of slices. A slice in Go is like a dynamic array or a list. If you want to understand slices in depth here is a [good article](http://blog.golang.org/go-slices-usage-and-internals). In short, a slice is a pointer to an array and metadata about what subset of the array to consider.
+
+Slices are low overhead because they are just a simple pointer and some metadata. They can be altered or duplicated easily without affecting the underlying array.
+
+Arrays in Go are interesting. Their size is a part of type. So `int[3]` is a different type than `int[6]`. They cannot be re-sized once created which is why slices are an attractive alternative.
+
+In our case, slices or arrays could have been used since we are assuming a finite board. I choose slices because that seems to be more idiomatic Go and also leaves the door open later to an infinite board.
+
+Returning to the code snippet above, you see that I am allocating a "slice of slices" using the `make()` function. I use `board_size` to set the initial size of the array underlying the slice.
+
+I then have to initialize each child slice.
+
+The `for` loop has several representations in Go. There is the standard version which would be familiar to you from other languages:
+
+```
+for i := 0; i < 10; ++i {
+}
+```
+
+This is identical to the Java `for` loop with the exception that there are no enclosing parenthesis.
+
+The version used above is akin to a Java `for-each` loop. The `range` operator returns each element of an array or slice and its index like so:
+
+```
+for index, value := range values {
+}
+```
+
+To omit `index` you can substitute it with an `_`. (Remember, every variable in Go must be used if it is declared or the compiler complains.) To omit `value` (as is our case above) you can simply leave it blank:
+
+```
+for index := range values {
+}
+```
+
+As you can see, our `for` loop iterates over each element of the parent slice and initializes it as a new slice itself. (As you might expect, Go has no type to represent a multi-dimension array. Multi-dimension arrays are just nested single-dimension arrays.)
+
+Moving on:
+
+```
+    for i := range board {
+        for j := range board[i] {
+            board[i][j] = 0
+        }
+    }
+
+    // Starting state
+    board[14][15]=1
+    board[15][15]=1
+    board[15][16]=1
+    board[15][17]=1
+    board[15][18]=1
+    board[16][18]=1
+```
+
+Here I just initialize each value of the array to 0 which represents a dead cell. Then I initialize several starting cells to 1 to represent our seed colony. (Spoiler Alert: Our colony will completely die off around round 50... They served well.)
+
+```
+    fmt.Println("Starting State: ")
+    printBoard(board)
+    fmt.Println()
+```
+
+A little visual show for our users to witness the starting state of the board.
+
+```
+    game(board, 1, 10, true)
+}
+```
+
+Ah! So the game begins! The `game()` method is recursive in nature and takes the board state, the current round, which round to stop at, and a `bool` indicating whether it should print the intermediate board states.
+
+Before we look at `game()` we should glance at some simply helper methods:
+
+```
+func printBoard(board [][]int) {
+    for i := range board {
+        for j := range board[i] {
+            fmt.Print(board[i][j])
+            fmt.Print(" ")
+        }
+        fmt.Println()
+    }
+}
+```
+
+As its name suggests, this simply prints the board state. This is another example of `for` loop iteration, and also shows off the use of `Print` and `Println` methods for easy formatting.
+
+```
+func copyBoard(board [][]int) [][]int {
+    board_next_round := make([][]int, len(board))
+    for i := range board {
+        board_next_round[i] = make([]int, len(board[i]))
+        copy(board_next_round[i], board[i])
+    }
+    return board_next_round
+}
+```
+
+This method is more complex, but nothing too difficult. It creates a new slice  and makes a deep copy. If we just copied the slice like this: `board_next_round := board` the underlying array would be the same and changes in the copy would be reflected in the original.
+
+The `copy()` method is a built in method in Google Go for copying the contents of one slice to another... Thus eliminating the need for an inner for loop to copy each array cell.
+
+Next we tackle our core function: `game()`.
+
+```
+func game(board [][]int, round int, round_limit int, verbose bool) {
+    if (round > round_limit) { return }
+
+    if (verbose) {
+        fmt.Printf("Round %v \n", round)
+        printBoard(board)
+        fmt.Println()
+    }
+
+    board_next_round := copyBoard(board)
+
+    for i := range board {
+       for j := range board[i] {
+            gameCell(board, board_next_round, i, j)
+        }
+    }
+
+    game(board_next_round, round+1, round_limit, verbose)
+}
+```
+
+The `game()` function is relatively straightforward. It first checks if it should stop based on the `round_limit`. Next it checks if it should print an intermediate board state.
+
+The next step is crucial. It makes a copy of the current board.
+
+GOL is tricky because all rules must be applied to each cell *simultaneously*. I cannot just loop through the existing board and change cells as I go because that would change the state of the cells further down the board by affecting the state of their neighbors.
+
+By having a copy, I can use the original board as a reference to decide which cells need to change, then make those changes in the copy. That way state is preserved within the round.
+
+After the copy is made, the `game()` function then iterates through each cell and applies the rules to that cell. Since that logic was reasonably complicated, I separated it into a separate method.
+
+```
+func gameCell(board [][]int, board_next_round [][]int, row int, col int) {
+    var neighbours = 0
+    var alive = (board[row][col] == 1)
+
+    if (row > 0 && col > 0 && board[row-1][col-1] == 1) { neighbours += 1 }
+    if (row > 0 && board[row-1][col] == 1) { neighbours += 1 }
+    if (row > 0 && col < len(board[row]) - 1 && board[row-1][col+1] == 1) { neighbours += 1 }
+    if (col > 0 && board[row][col-1] == 1) { neighbours += 1 }
+    if (col < len(board[row]) - 1 && board[row][col+1] == 1) { neighbours += 1 }
+    if (row < len(board) - 1 && col > 0 && board[row+1][col-1] == 1) { neighbours += 1 }
+    if (row < len(board) - 1 && board[row+1][col] == 1) { neighbours += 1 }
+    if (row < len(board) - 1 && col < len(board[row]) - 1 && board[row+1][col+1] == 1) { neighbours += 1 }
+
+    if (alive && neighbours < 2) { board_next_round[row][col] = 0; }
+    if (alive && neighbours > 3) { board_next_round[row][col] = 0; }
+    if (!alive && neighbours == 3) { board_next_round[row][col] = 1; }
+}
+```
+
+I will be the first to admit that this could have been better... Something to aspire to as my Go skills grow.
+
+At a high level, I need two pieces of information: is the cell under consideration alive or dead? and, how many live neighbors does it have?
+
+The first piece of information is an easy check (`board[row][col] == 1`).
+
+The second piece of information is a little harder. Each of the eight neighbors has to be checked and a running tally of live neighbors kept. I opted for the simple but ugly solution of eight `if` statements.
+
+Since we are using a finite board each neighbor must be bounds checked to make sure we are not leaving the edge of the board which contributes to the complexity of the `if` statements.
+
+Once the cell state and number of live neighbors have been established, implementing the GOL rules is as easy as three more `if` statements. (Only three `if` statements are needed because implementing rule 2 of the GOL requires that no action be taken and is handled implicitly.)
+
+###### Conclusion
+
+That concludes my first skirmish with Go! Try it for yourself and tell me what you think!
+
+Questions? Comments? Concerns? Email me at: smouring@sequoiainc.com!

@@ -1,0 +1,256 @@
+#### Introduction
+
+As a quick glance through past posts will demonstrate, I love the Raspberry Pi platform! I have been using the Pi since it was released, and have owned at least a dozen (dozens maybe?) of them over the years. I was therefore delighted to see that Amazon added Rasbian support to their new AWS EC2 Systems Manager platform!
+
+AWS EC2 Systems Manager (Systems Manager for short) is an agent based platform for configuring, controlling, and governing on premise servers from within the EC2 console. By installing a Systems Manager agent on your server, you can execute commands remotely, ensure servers remain in specific state, and enforce configuration management requirements.
+
+The agent connects to Systems Manager through an "activation" which is represents a collection of servers that are managed as a single unit.
+
+*NOTE: An interesting advantage of Systems Manager is that it is a "pull" not a "push" model. The installed agent polls Systems Manager for commands, and therefore servers can be safely managed from behind a firewall or from within a private subnet since. Systems Manager never directly connects to the managed servers.*
+
+Connecting your Raspberry Pi to Systems Manager requires a few steps:
+
+* Establish the necessary IAM permissions
+* Create an activation
+* Install agent and register with activation
+
+Once the agent is up and running you can then perform Systems Manager operations such as:
+
+* Create a command
+* Run a command
+
+This is just scratching the surface of Systems Manager, but will give you a good foundation from which to learn more!
+
+#### Establish IAM Permissions
+
+In order to give each "activation" the necessary access to AWS resources (for logging, interacting with systems manager and ec2, reading data from s3, and so forth) you need to create an IAM Role.
+
+*NOTE: When you create an activation from the AWS Management Console, there is an option to create the role automatically. I find however, that you learn a more if you create IAM resources manually. If you prefer to let AWS do this behind the scenes, skip tot the next section.*
+
+You will need to first create an IAM Policy to attach to your role. Below is the default policy that covers all the core permissions required by Systems Manager:
+
+```
+{
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Effect": "Allow",
+            "Action": [
+                "ssm:DescribeAssociation",
+                
+  "ssm:GetDeployablePatchSnapshotForInstance",
+                "ssm:GetDocument",
+                "ssm:GetParameters",
+                "ssm:ListAssociations",
+                "ssm:ListInstanceAssociations",
+                "ssm:PutInventory",
+                "ssm:PutComplianceItems",
+                "ssm:UpdateAssociationStatus",
+                "ssm:UpdateInstanceAssociationStatus",
+                "ssm:UpdateInstanceInformation"
+            ],
+            "Resource": "*"
+        },
+        {
+            "Effect": "Allow",
+            "Action": [
+                "ec2messages:AcknowledgeMessage",
+                "ec2messages:DeleteMessage",
+                "ec2messages:FailMessage",
+                "ec2messages:GetEndpoint",
+                "ec2messages:GetMessages",
+                "ec2messages:SendReply"
+            ],
+            "Resource": "*"
+        },
+        {
+            "Effect": "Allow",
+            "Action": [
+                "cloudwatch:PutMetricData"
+            ],
+            "Resource": "*"
+        },
+        {
+            "Effect": "Allow",
+            "Action": [
+                "ec2:DescribeInstanceStatus"
+            ],
+            "Resource": "*"
+        },
+        {
+            "Effect": "Allow",
+            "Action": [
+                "ds:CreateComputer",
+                "ds:DescribeDirectories"
+            ],
+            "Resource": "*"
+        },
+        {
+            "Effect": "Allow",
+            "Action": [
+                "logs:CreateLogGroup",
+                "logs:CreateLogStream",
+                "logs:DescribeLogGroups",
+                "logs:DescribeLogStreams",
+                "logs:PutLogEvents"
+            ],
+            "Resource": "*"
+        },
+        {
+            "Effect": "Allow",
+            "Action": [
+                "s3:PutObject",
+                "s3:GetObject",
+                "s3:AbortMultipartUpload",
+                "s3:ListMultipartUploadParts",
+                "s3:ListBucketMultipartUploads"
+            ],
+            "Resource": "*"
+        },
+        {
+            "Effect": "Allow",
+            "Action": [
+                "s3:ListBucket"
+            ],
+            "Resource": "arn:aws:s3:::amazon-ssm-packages-*"
+        }
+    ]
+}
+```
+
+Once you have created the above IAM Policy, you need to create an IAM Role and attach that policy to the new Role.
+
+For the Role, you will need to specify a Trust Policy that enables Systems Manager to assume the role:
+
+```
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Principal": {
+        "Service": "ssm.amazonaws.com"
+      },
+      "Action": "sts:AssumeRole"
+    }
+  ]
+}
+```
+
+You now have the IAM permissions necessary for your activation to execute successfully!
+
+#### Create Activation
+
+You are now ready to create an activation! Once you have an activation you will be able to register servers to it. Those servers will operate with the permissions and properties of the activation.
+
+To create an activation you access the `EC2` section of the AWS Management Console. On the left hand navigation bar there is a section for `Systems Manager Services` and `Systems Manager Shared Resources`.
+
+Under `Systems Manager Shared Resources` you will see a link for `Activations`.
+
+Click on `Create Activation`.
+
+![](/content/images/2017/11/screenshot1.png)
+
+You will see a simple form. The only required fields are the `Activation Description` and the `IAM Role Name`. 
+
+If you elected to create your IAM permissions above, then select `Select an existing custom...` and then select your role name from the dropdown that appears. Otherwise leave the default value selected and AWS will create the IAM Role for you behind the scenes.
+
+*NOTE: If you do not have the Trust Policy set to include `ssm.amazonaws.com` you can still select the policy but it will fail internally.*
+
+When you create your activation you will be given an activation code and activation id. These act like a secret key and access key for your servers to connect to Systems Manager and assume the IAM Role associated with their activation.
+
+**Save and backup these values!**
+
+Excellent! Now that your activation is created it is ready to have servers registered to it!
+
+#### Install Agent 
+
+There are Systems Manager agent builds for a wide variety of platforms. For the various platform's installation instructions consult the [Amazon documentation](http://docs.aws.amazon.com/systems-manager/latest/userguide/ssm-agent.html).
+
+For reference, I have curated the install instructions for Raspberry Pi here:
+
+```
+mkdir /tmp/ssm
+
+sudo curl https://s3.amazonaws.com/ec2-downloads-windows/SSMAgent/latest/debian_arm/amazon-ssm-agent.deb -o /tmp/ssm/amazon-ssm-agent.deb
+
+sudo dpkg -i /tmp/ssm/amazon-ssm-agent.deb
+```
+
+Once the agent is installed, it will need to be registered with your activation:
+
+```
+sudo service amazon-ssm-agent stop
+
+sudo amazon-ssm-agent -register -code "<CODE>" -id "<ID>" -region "<REGION>"
+
+sudo service amazon-ssm-agent start
+```
+
+*NOTE: Replace the `<CODE>`,  and `<ID>` place holders with your activation's code and id, and replace the `<REGION>` place holder with the region in which your activation resides (for example, `us-east-1`).*
+
+If that is successful, you should see your Raspberry Pi appear as an instance on the `Managed Instances` tab under `Systems Manager Shared Resources`!
+
+Now that your instance is being managed by Systems Manager you have access to a whole world of configuration management and enforcement. 
+
+We will conclude this blog with a simple example to demonstrate (and validate) two way communication with the Raspberry Pi from within Systems Manager.
+
+#### Create Command
+
+The simplest thing you want to do on a remote server is execute a command. Systems Manager has a mechanism for creating and managing commands, and executing them remotely on managed instances.
+
+Before you can run a command, you need to create a definition that defines it and provides context for how / where it should execute. Systems Manager manages these definitions of operations as `Documents`. 
+
+*NOTE: There are several types of documents for different applications.*
+
+To get started, select the `Documents` tab under `Systems Manager Shared Resources`. Click the `Create Document` button.
+
+Systems Manager uses a custom JSON schema for defining Documents. You can read the [Amazon documentation](http://docs.aws.amazon.com/systems-manager/latest/userguide/sysman-ssm-docs.html) for more detail.
+
+Below is a simple example for a Linux command that patches the server to the latest patch level:
+
+```
+{
+   "schemaVersion":"2.2",
+   "description":"developer-update-raspbian",
+   "mainSteps":[
+      {
+         "action":"aws:runShellScript",
+         "name":"PatchLinux",
+         "precondition":{
+            "StringEquals":[
+               "platformType",
+               "Linux"
+            ]
+         },
+         "inputs":{
+            "runCommand":[
+               "sudo apt-get upgrade -y"
+            ]
+         }
+      }
+   ]
+}
+```
+
+Once your command is created, you are ready to execute it on your Raspberry Pi!
+
+#### Run Command
+
+To run the command select the `Run Command` tab under the `Systems Manager Services` section. Click the `Run a Command` button.
+
+You are presented with a form that lets you select a command, select which instances to execute it on, and specify some parameters relevant if you are executing on many servers simultaneously.
+
+Select the command you created above, and your Raspberry Pi instance id, then click the `Run` button.
+
+You will now see an entry on the Run Command dashboard representing your running command. 
+
+You can view the command result by clicking on the command entry, clicking the `Output` tab on the detail view, and clicking the `View Output` link. This will show you the command line output from running the command!
+
+If all goes well your command will successfully execute!
+
+#### Conclusion
+
+Systems Manager is a powerful platform for configuration management and remote access to servers. I hope this gentle introduction to it was useful and provides a good foundation for you to use Systems Manager further! 
+
+Feel free to email me at smouring@sequoiainc.com with any questions, comments, or feedback!

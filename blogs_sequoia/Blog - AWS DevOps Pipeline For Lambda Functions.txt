@@ -1,0 +1,154 @@
+#### Introduction
+
+Over the last few years I have accumulated a collection of AWS Lambda functions that serve various purposes. Some are the backing behind [Alexa](https://blogs.sequoiainc.com/amazon-alexa-writing-my-first-skill/) [Skills](https://blogs.sequoiainc.com/amazon-alexa-slots-for-user-input/), others act as [standalone miniature APIs](https://blogs.sequoiainc.com/aws-using-lambdas-for-simple-apis/), and still others form the [infrastructure for larger applications](https://blogs.sequoiainc.com/blockchain-dev-part-2-ethereum-rpc-from-aws-lambda/). 
+
+Making updates and deploying new versions of these functions manually would be a hassle... And besides. Automation is fun! So I developed a "DevOps pipeline" for each function by leveraging several other AWS services. The pipeline enables a new deployment to be triggered from a single Git commit.
+
+In this blog I will show you how to build a similar pipeline for your own functions! Let's get started.
+
+#### Step 1: CodeCommit
+
+The first tool we will leverage is AWS CodeCommit. CodeCommit is a managed instance of Git (similar to GitHub). Unlike GitHub however, it supports unlimited private repositories for almost free and is therefore my go to solution for storing my personal projects. CodeCommit is also well integrated into the AWS ecosystem and provides strong cross-service support inside AWS.
+
+I create one Git repository for each AWS Lambda function pipeline. 
+
+Everyone has a different philosophy for managing their branches. The only requirement for our pipeline is that there is a single branch that is designated as the "build" branch. Any commits to that branch will trigger a pipeline build.
+
+I personally use a `master`/`dev` branch strategy. I develop on the `dev` branch (or on feature branches derived from `dev`) and when I am ready to release a new version, I perform squash commit / merge from `dev` onto `master`.
+
+In any event, you need to create an CodeCommit repository for your AWS Lambda function code and push your build branch to the upstream repository. 
+
+*NOTE: Setting up CodeCommit can be a little difficult (especially for MacOS users), but as usual, the [AWS documentation](https://docs.aws.amazon.com/codecommit/latest/userguide/setting-up.html) is excellent.*
+
+For our blog here, I will use the same project that was demonstrated in my [prior blog](https://blogs.sequoiainc.com/aws-using-lambdas-for-simple-apis/).
+
+#### Step 2: CodeBuild - buildspec.yml
+
+For the next step we will leverage the AWS CodeBuild service. CodeBuild is an engine for performing software builds without the need to maintain a persistent build server. It uses a build file you provide to specify what commands should be run to build your code base and what artifacts should be generated.
+
+The first step is to define your build file. The exact build file will vary wildly based on your project environment and language choice. The AWS documentation containing the build file specification can be found [here](https://docs.aws.amazon.com/codebuild/latest/userguide/build-spec-ref.html).
+
+In our case we will be building a simple Python lambda function and we will be using the [AWS SAM](https://docs.aws.amazon.com/lambda/latest/dg/serverless_app.html) templating tool to generate AWS CloudFormation templates that will deploy our application.
+
+*NOTE: A full discussion of SAM is outside the scope of the blog, but we will touch on a few high points below.*
+
+By default CodeBuild looks for a `buildspec.yml` file in the root of your repository. (These defaults can also be overridden in your CodeBuild project definition if you prefer.)
+
+Here is the `buildspec.yml` for our example:
+
+```
+version: 0.2
+phases:
+  install:
+    commands:
+      - aws cloudformation package --template-file quotes-template.yaml --s3-bucket <BUCKET NAME> --output-template-file quotes.yaml
+artifacts:
+  type: zip
+  files:
+    - quotes.yaml
+```
+
+This build is very simple. The only command that is executed is a SAM command that bundles up the source code and copies it to an S3 bucket:
+
+```
+aws cloudformation package --template-file quotes-template.yaml --s3-bucket <BUCKET NAME> --output-template-file quotes.yaml
+```
+
+Notice that the command also transforms a template file (`quotes-template.yaml` to `quotes.yaml`). That template file is a SAM template that specifies how the AWS Lambda function is created.
+
+*NOTE: SAM is not native to CodeBuild and is just one of the many types of builds CodeBuild can conduct.*
+
+For completeness let me show you the SAM template:
+
+```
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: 'AWS::Serverless-2016-10-31'
+Description: Lambda - Quotes
+Resources:
+  developerlambdaquotes:
+    Type: 'AWS::Serverless::Function'
+    Properties:
+      FunctionName: developer-function-quotes
+      Handler: lambda_function.lambda_handler
+      Runtime: python3.6
+      Description: Lambda - Quotes
+      MemorySize: 128
+      Timeout: 7
+      Role: >-
+        <IAM ROLE ARN>
+
+```
+
+You can see here that this template specifies all the configuration that attends the Lambda function. (In particular note that `FunctionName` option. When you deploy this template that will be the name of the function that is created.) It reflects all the same options that you could set if you were manually creating a Lambda function.
+
+The SAM command above will process the template and add some additional data (such as a `CodeUri` field that references where the code bundle is stored in S3). The output (`quotes.yaml`) is exported by CodeBuild to be used in later steps.
+
+#### Step 3: CodeBuild - Project
+
+Once we have a `buildspec.yml` file we are ready to create an actual CodeBuild project.
+
+Go to the CodeBuild console and "Create project" button (or "Get Started" if this is your first CodeBuild project). This will open the CodeBuild project creation wizard.
+
+On the first screen of the wizard you will provide a project name. Next, you will select AWS CodeCommit as your source provider and then select the repository (created in Step 1) to build from. 
+
+*NOTE: At this point you do not specify which branch to use. By default, CodeBuild will ask you each time you build which branch to use, and when we get into AWS CodePipeline below we will specify the branch there.*
+
+Next you can set configuration for the build environment. Specify Ubuntu for the "Operating System" and a "Runtime" / "Runtime version" appropriate for the language of the project you are building. Otherwise accept the defaults. 
+
+Next, under the "Artifacts" section you can specify where your build artifacts go. I choose Amazon S3 and specify a name (I reuse the name of the repository) and a bucket (I created one expressly for this purpose.)
+
+Accept the defaults for all other options.
+
+Click "Continue" and then click "Save" if you are happy with your settings.
+
+At this point you should try to run a build by clicking the "Start build" button and specifying a branch to build from. Once you have a successful build you are ready for the next step!
+
+#### Step 4: CodePipeline
+
+AWS CodePipeline is a service that orchestrates many different services (inside and outside the AWS ecosystem) to perform a release. It will form the backbone of our pipeline.
+
+To get started, go to the CodePipeline console and click the "Create pipeline" button (or "Get started" if this is your first pipeline.)
+
+First step is to give your pipeline a name.
+
+Next step, you select the source provider. As before we will select AWS CodeCommit. Here we also specify the branch that this pipeline should build.
+
+Next step, you select the build provider. For this step we select AWS CodeBuild and specify the name of our CodeBuild project.
+
+Next step, you select the deployment provider. In our case we are going to build on the SAM template we generated in Step 2 and select AWS CloudFormation as our build provider. Using the SAM template (which is converted into a CloudFormation template) we will create a CloudFormation change set that we then use to deploy our Lambda function.
+
+For "Action mode" select the "Create or update a change set" option. This collects whatever changes have been made to the Lambda function in the CodeCommit commit and stages them to be deployed.
+
+For "Stack name" and "Chagne set name" use whatever names you preer. I usually reuse the repository name for the stack name and then use the repository name with "-change-set" appended to it for the change set name.
+
+For "Template file" you specify the name of the template file you exported in your `buildspec.yml` file in Step 2 (`quotes.yaml` in our case).
+
+For all other settings you can accept the defaults.
+
+The next step asks you to specify or create a service role to execute CodePipeline with. If you have one already created you can reuse it, otherwise allow CodePipeline to create one.
+
+The final step asks you to review your pipeline. If everything looks good you can click the "Create pipeline" button!
+
+#### Step 5: CodePipeline - Add Deploy Stage
+
+Unfortunately we are not done yet. The newly created pipeline's final step is actually just a Staging step that simple prepares the change set in CloudFormation. It does not actually execute the change set and apply the changes.
+
+To add this final step you will need to edit the pipeline you just created. You will see a flowchart depiction where the last step is the "Staging" phase.
+
+You will want to click the "+ Stage" button after the "Staging" phase. Enter something sensible for the phase name (such as "Deploy"). 
+
+Now click the "+ Action" button. For "Action category" select the "Deploy" option. You can specify any name you want for the action. For "Deployment provider" dropdown you should select the "Cloud Formation" option.
+
+Similar to what we did before, we select the "Execute a change set" option from the "Action mode" dropdown. Enter the same stack name and change set name that you set in Step 4 above. Now click the "Add action" button. 
+
+Then finally, you click the "Save pipeline changes" button.
+
+To test your pipeline, you can click the "Release change" button and watch each phase of your pipeline execute to ensure they execute successfully.
+
+To further test your pipeline, you can push a fresh commit to your build branch and watch as it triggers a pipeline release.
+
+#### Conclusions
+
+Congratulations! You now have an end-to-end DevOps pipeline for releasing updates to Lambda functions!
+
+Questions? Comments? Email me at smouring@sequoiainc.com!

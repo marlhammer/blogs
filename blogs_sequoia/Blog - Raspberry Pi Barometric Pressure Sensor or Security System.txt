@@ -1,0 +1,214 @@
+<p>A couple months ago I was chatting with a coworker (Chad Wells who blogs <a href="http://blogs.sequoiainc.com/blogs/author/9">here</a>) about Raspberry Pi. He speculated that, given a sufficiently sensitive barometric pressure sensor, you should be able to detect the change in air pressure in a house that results from opening a door.</p>
+
+<p>Intrigued, I bought a barometric sensor (this one <a href="https://www.adafruit.com/product/391">here</a>&nbsp;which has since been replaced with the more modern one <a href="http://www.adafruit.com/products/1603">here</a>), and last night, finally got around to wiring it up!</p>
+
+<p>&nbsp;</p>
+
+<p><strong>Wiring</strong></p>
+
+<p>The BPM085 sensor uses the I2C protocol for communicating with the Raspberry Pi. I2C is a protocol for attaching sensors / other devices to an embedded system on a bus. You can chain multiple sensors / other devices together and refer&nbsp;them by their bus number.</p>
+
+<p>The BPM085 requires 3.3v, ground, and the two I2C pins (marked&nbsp;SDA and SCL).&nbsp;</p>
+
+<p>I am using a Raspberry Pi B+ in this blog. The I2C wiring is different for each version of Raspberrry Pi (including the 256 MB and 512 MB B variants), so you should consult the appropriate pin layout diagrams for your model of Pi. (I used <a href="http://www.rs-online.com/designspark/electronics/eng/blog/introducing-the-raspberry-pi-b-plus">this one</a> for the B+.)</p>
+
+<p>Here are pictures of my breadboard and Raspberry Pi wiring.</p>
+
+<p><a href="https://www.dropbox.com/s/3h4ftgwcq8bgvq9/bpm1.jpg?dl=0">Breadboard</a>.</p>
+
+<p><a href="https://www.dropbox.com/s/mxrz7x8o6ude7ho/bpm2.jpg?dl=0">Raspberry Pi</a>.</p>
+
+<p><a href="https://www.dropbox.com/s/ph9hypr2onz4zev/bpm3.jpg?dl=0">Raspberry Pi closeup</a>.</p>
+
+<p><em>(Note: I have started using the <a href="https://www.amazon.com/gp/product/B00M6G9YBM/ref=as_li_tl?ie=UTF8&camp=1789&creative=9325&creativeASIN=B00M6G9YBM&linkCode=as2&tag=smouring-20&linkId=847fcd508bbfab93351a68825ddf278a">C4 Labs Black Ice</a> cases for my all my Raspberry Pi needs. Hands down the best cases for a Raspberry Pi in existence, bar none. Perfect fit, sturdy construction, beautiful aesthetics... Comes in black, or wood&nbsp;grain, or some other colors. It is the only case you will ever need ever again, I promise!)</em></p>
+
+<p>The wiring is the simple part! Once that is down you need to enable support for I2C in the Raspberry Pi kernel.</p>
+
+<p>&nbsp;</p>
+
+<p><strong>Kernal Support</strong></p>
+
+<p>You must enable Kernal Support for I2C in order to use your newly wired sensor.</p>
+
+<p>You can attempt to do this from the Raspberry Pi Config tool.</p>
+
+<div style="background:#eee; border:1px solid #ccc; padding:5px 10px"><tt>sudo raspi-config</tt></div>
+
+<p>&nbsp;</p>
+
+<p>Then <tt>Advanced Options -&gt; I2C</tt> and follow the prompts. Reboot your Raspberry Pi, and then run this command to see if I2C is configured properly:</p>
+
+<div style="background:#eee; border:1px solid #ccc; padding:5px 10px"><tt>sudo i2cdetect -y 1</tt></div>
+
+<p>&nbsp;</p>
+
+<p><em>(Note: If you are running a Raspberry Pi B 256 Model, use <tt>0</tt> instead of <tt>1</tt>).</em></p>
+
+<p>You should get no error messages and see a grid printed out to the console presenting the attached devices.</p>
+
+<p>However, I found when I did this, even on a Raspberry Pi B+ with fully updated firmware, that I2C was not correctly enabled. (Dagger!)</p>
+
+<p>I had to go through the following manual steps to setup and verify that I2C support was enabled correctly in the kernel.</p>
+
+<p>&nbsp;</p>
+
+<p>To start, edit&nbsp;your modules file:</p>
+
+<div style="background:#eee; border:1px solid #ccc; padding:5px 10px"><tt>sudo nano /etc/modules</tt></div>
+
+<p>&nbsp;</p>
+
+<p>At the bottom of this&nbsp;file, add the following lines if they are not already present:</p>
+
+<div style="background:#eee; border:1px solid #ccc; padding:5px 10px"><tt>i2c-bcm2708<br />
+i2c-dev</tt></div>
+
+<p>&nbsp;</p>
+
+<p>Then, if there is a&nbsp;<tt>/etc/modprobe.d/raspi-blacklist.conf</tt> file,&nbsp;edit it:</p>
+
+<div style="background:#eee; border:1px solid #ccc; padding:5px 10px"><tt>sudo nano /etc/modprobe.d/raspi-blacklist.conf</tt></div>
+
+<p>&nbsp;</p>
+
+<p>And verify that, if the following lines are present, they are commented out:</p>
+
+<div style="background:#eee; border:1px solid #ccc; padding:5px 10px"><tt>#blacklist spi-bcm2708<br />
+#blacklist i2c-bcm2708</tt></div>
+
+<p>&nbsp;</p>
+
+<p>Then, edit your boot config:</p>
+
+<div style="background:#eee; border:1px solid #ccc; padding:5px 10px"><tt>sudo nano /boot/config.txt</tt></div>
+
+<p>&nbsp;</p>
+
+<p>At the bottom of this file, add the following lines if they are not already present:</p>
+
+<div style="background:#eee; border:1px solid #ccc; padding:5px 10px"><tt>dtparam=i2c1=on<br />
+dtparam=i2c_arm=on</tt></div>
+
+<p>&nbsp;</p>
+
+<p>Now, reboot your Pi:</p>
+
+<div style="background:#eee; border:1px solid #ccc; padding:5px 10px"><tt>sudo reboot</tt></div>
+
+<p>&nbsp;</p>
+
+<p>Now run the test command to test if I2C is configured properly:</p>
+
+<div style="background:#eee; border:1px solid #ccc; padding:5px 10px"><tt>sudo i2cdetect -y 1</tt></div>
+
+<p>&nbsp;</p>
+
+<p><em>(Note: Again, if you are running a Raspberry Pi B 256 Model, use 0 instead of 1).</em></p>
+
+<p>&nbsp;</p>
+
+<p><strong>Software</strong></p>
+
+<p><a href="http://www.adafruit.com/">AdaFruit </a>maintains a drivers and sample code for many sensors in the Arduino, Raspberry Pi, Beagle Bone, etc. community.&nbsp;I used their Python BPM085 driver as a starting point for my &quot;door opened&quot; detector.</p>
+
+<p>Installation is simple:</p>
+
+<div style="background:#eee; border:1px solid #ccc; padding:5px 10px"><tt>sudo apt-get install git build-essential python-dev python-smbus<br />
+git clone https://github.com/adafruit/Adafruit_Python_BMP.git<br />
+cd Adafruit_Python_BMP<br />
+sudo python setup.py install</tt></div>
+
+<p>&nbsp;</p>
+
+<p>After the setup is complete, you can test that the driver is working by running their example program:</p>
+
+<div style="background:#eee; border:1px solid #ccc; padding:5px 10px"><tt>cd examples<br />
+sudo python simpletest.py</tt></div>
+
+<p>&nbsp;</p>
+
+<p><strong>Door Detector</strong></p>
+
+<p>So, the basic idea behind my &quot;door opened&quot; script was to first establish a &quot;baseline&quot; pressure in the house by sampling the pressure repeatedly to form an average pressure. Once the baseline was established, the house&#39;s pressure could be sampled many times a second to try to detect a spike in pressure corresponding to a door opening (or a window breaking.)</p>
+
+<p><em>Note: You can download the entire script <a href="https://www.dropbox.com/s/v5d683e4ao9kw2x/door_detector.py?dl=0">here</a>.</em></p>
+
+<p>We&#39;ll take the script line by line:</p>
+
+<div style="background:#eee; border:1px solid #ccc; padding:5px 10px"><tt>#!/usr/bin/python</tt></div>
+
+<div style="background:#eee; border:1px solid #ccc; padding:5px 10px"><tt>import sys<br />
+import time<br />
+import Adafruit_BMP.BMP085 as BMP085</tt></div>
+
+<div style="background:#eee; border:1px solid #ccc; padding:5px 10px"><tt># Parameters are:<br />
+# &nbsp; busnum (i2c bus number, defaults to 1)<br />
+# &nbsp; mode (BMP085_ULTRALOWPOWER, BMP085_STANDARD, BMP085_HIGHRES, or BMP085_ULTRAHIGHRES, defaults to BMP085_STANDARD). See the data sheet.<br />
+#<br />
+#sensor = BMP085.BMP085()<br />
+sensor = BMP085.BMP085(mode=BMP085.BMP085_ULTRAHIGHRES)</tt></div>
+
+<p>&nbsp;</p>
+
+<p>Here I am doing all the necessary imports and configuring the AdaFruit driver. (The datasheet can be found <a href="http://www.adafruit.com/datasheets/BMP085_DataSheet_Rev.1.0_01July2008.pdf">here</a>.) I opted for Ultra High Res since power is not a concern (my Raspberry Pi is plugged in) and I wanted to most accurate and sensitive reading I could get.</p>
+
+<div style="background:#eee; border:1px solid #ccc; padding:5px 10px"><tt>try:<br />
+&nbsp; sys.stdout.write(&#39;Establishing a baseline.&#39;)<br />
+&nbsp; sys.stdout.flush()<br />
+&nbsp; baseline_points=[];<br />
+&nbsp; for x in range(0, 100):<br />
+&nbsp; &nbsp; time.sleep(.1)<br />
+&nbsp; &nbsp; baseline_points.append(sensor.read_pressure())<br />
+&nbsp; &nbsp; if x % 10 == 0:<br />
+&nbsp; &nbsp; &nbsp; sys.stdout.write(&#39;.&#39;)<br />
+&nbsp; &nbsp; &nbsp; sys.stdout.flush()</tt></div>
+
+<div style="background:#eee; border:1px solid #ccc; padding:5px 10px"><tt>&nbsp; tolerance=8</tt></div>
+
+<p>&nbsp;</p>
+
+<p>Originally I just sampled the pressure at the start of the program and used that average for the rest of the run, but then I realized that environmental factors (AC, outside temperature, time of day, etc.) might have subtle effects on the air pressure in the house.&nbsp;</p>
+
+<p>So I changed the program to use a rolling average. I created a fixed size queue of the last 100 pressure readings and used those to compute the baseline average. So if the air pressure in the house does change gradually, the program will adapt.</p>
+
+<div style="background:#eee; border:1px solid #ccc; padding:5px 10px"><tt>&nbsp; while 1:<br />
+&nbsp; &nbsp; time.sleep(.1)<br />
+&nbsp; &nbsp; reading = sensor.read_pressure()</tt></div>
+
+<div style="background:#eee; border:1px solid #ccc; padding:5px 10px"><tt>&nbsp; &nbsp; baseline_points.pop(0);<br />
+&nbsp; &nbsp; baseline_points.append(reading);</tt></div>
+
+<div style="background:#eee; border:1px solid #ccc; padding:5px 10px"><tt>&nbsp; &nbsp; baseline = 0;<br />
+&nbsp; &nbsp; for x in baseline_points:<br />
+&nbsp; &nbsp; &nbsp; baseline += x<br />
+&nbsp; &nbsp; baseline /= len(baseline_points)<br />
+&nbsp; &nbsp; print(&#39;Baseline: %s&#39; % baseline)</tt></div>
+
+<div style="background:#eee; border:1px solid #ccc; padding:5px 10px"><tt>&nbsp; &nbsp; if abs(reading - baseline) &gt; tolerance:<br />
+&nbsp; &nbsp; &nbsp; print reading<br />
+except KeyboardInterrupt:<br />
+&nbsp; print &quot;\nStopped.&quot;</tt></div>
+
+<p>&nbsp;</p>
+
+<p>Here, I now loop and every 1/10 second, take a pressure reading, update and calculate the rolling average, and then test to see if the pressure reading is sufficiently different from the baseline to report an alert.</p>
+
+<p>&nbsp;</p>
+
+<p><strong>Results</strong></p>
+
+<p>And so, with all that work, the question is,&nbsp;did it work?&nbsp;</p>
+
+<p>Yes and no.</p>
+
+<p>This setup <em>could</em> detect local changes in pressure (a puff of air, the door opening if it was really close, the AC coming on, etc.)</p>
+
+<p>However, noise was a big problem. The sensor would occasionally read too high (or too low) and trigger a false alarm making it hard to distinguish noise from real events.</p>
+
+<p>I found a tolerance of 8 to work well. 10 cuts down on the noise, but makes the actual events (door opening) harder to detect. (So instead of a &quot;door opened&quot; sensor, it becomes more of a &quot;door breached&quot; sensor...)</p>
+
+<p>Still, a very fun and interesting experiment! With more sensitive equipment (and maybe other sensors...) it could get better results!</p>
+
+<p>Thanks for reading!</p>
+
+<p>Questions? Comments? Email me at: smouring@sequoiainc.com.</p>

@@ -1,0 +1,83 @@
+#### Combine
+
+On June 25th, 2016, Sequoia officially unveiled Combine, a unique offering for Amazon Web Services that is tailored to companies working in and deploying to the Intelligence Community's C2S cloud environment.
+
+Built by C2S experts, Sequoia's Combine is a unique solution that captures the unique and comprehensive experience Sequoia has earned in building, developing in, and deploying to the IC's cloud environments. Combine distills Sequoia's experience into a product where customers can develop software targeted for those same environments without the need for IC cleared or on-premise personnel.
+
+Sequoia was present at the earliest stages of C2S development, and Sequoia has brought that experience to bear in developing Combine. We continues to leverage our on site experience in keeping Combine updated in lockstep with the IC's cloud environments.
+
+Combine is being made available through Amazon's Reseller program. Through this program, Sequoia provisions a separate, standalone AWS account for each customer, with their own isolated Combine environment. Each customer has autonomy within their own account and can provision resources, deploy software, and move data within their account just like other AWS account. Sequoia retains remote access to the account for maintenance and support.
+
+At its heart, Combine is a simulation environment. It is a collection of proprietary software, AWS resources, and architecture that simulates the unique differences between the IC's AWS Regions and the commercial AWS Regions.
+
+These differences make it difficult to develop software for the IC without a presence in that Government space. Companies without such a presence have to rely on third parties to integrate their software and provide feedback. Sequoia's Combine models these differences and creates an environment that closely mirrors the IC cloud environment.
+
+In this fashion, companies can adapt their software to these environmental differences, and shorten the feedback window to more quickly and successfully make their software available to the Intelligence Community.
+
+There are several key differences between the IC's AWS Regions and commercial AWS Regions. These differences can be summarized as follows:
+
+* No outbound internet access.
+* Reduced set of AWS services and/or components.
+* Fundamentally different access and security model.
+* Complex security requirements and process.
+* Network differences including different service endpoints.
+
+Combine directly addresses most of these differences, and, combined with the expertise and  relationships Sequoia has made in the Intelligence Community, can dramatically reduce the barrier to entry for Combine customers.
+
+Let us consider each of these differences one by one.
+
+##### No Outbound Internet Access
+
+The IC cloud is air-gapped. There is no internet access available from within that environment. This restriction makes integration with third-party cloud tools, dependence on public repositories, access to on premise services, etc., all impossible.
+
+Combine simulates this restriction by routing all traffic from within its primary VPC through a proxy server. This proxy server allows access to internet resources to be white-listed, allowing access to Amazon AWS services, while denying all other internet access.
+
+For customers who are integrating with software that is plausibly available in the IC environment, the proxy can be configured to relax its restrictions and allow access to just those integration points.
+
+#### Reduced Set Of AWS Services / Components
+
+The IC's AWS Regions are completely separate from Amazon's Commercial offerings. As such, the have a more limited set of AWS services and resources. While many fundamental AWS services such as EC2 and S3 are available, many of the managed services (AWS Elastic BeanStalk, AWS EFS) or more recent offerings (AWS Lambda, AWS CodeDeploy, AWS CodeCommit, etc.) are absent from these environments.
+
+Likewise absent are other resources, such as some of the more exotic EC2 instance types.
+
+Combine restricts access via IAM policies to any AWS service that is not present in the IC's AWS Regions. Our experts who work on premise in the Intelligence Community are continually monitoring those environments and updating Combine to reflect new changes as they roll out there.
+
+For customers who are developing or deploying software to the Intelligence Community, Combine provides a fail fast detection when software uses services that are not available.
+
+#### Access And Security Model
+
+Access to the IC's cloud environment is based on two-way SSL communication through the use of PKI certificates. Unlike most AWS environments, there is no regular access to IAM users or anything other than ephemeral access through tokens.
+
+Combine fully emulates this functionality by building a custom certificate authority chain for each customer, and only allowing AWS Console and API access into Combine through a service called TAP.
+
+TAP issues access tokens to either users or services though a web interface that requires PKI certificate authentication. This exactly mirrors how access to the IC's AWS Regions is achieved, and gives customers a chance to design software around this authentication paradigm.
+
+#### Security Baselines And Processes
+
+In the Intelligence Community, the authority to operate software is regulated by a complex security process that is uniquely defined by each and every member of that community. Although there is no one size fits all solution, Combine is regularly updated with on site knowledge about security policies and baselines.
+
+Combine allows customers to validate their software against Intelligence Community specifications and accelerate the time required to achieve compliance.
+
+A close collaboration exists between Sequoia personnel the bodies governing C2S security. In combination with the Combine platform, Sequoia personnel are available to consult and provide tailored assistance in moving customer software through the security process.
+
+Additional services can also be ordered through Combine, including many of the same security scans that are required to pass in order to gain approval in the Intelligence Community.
+
+Combine is at the moment the only tool for on-boarding into C2S that has been approved by both Amazon and the C2S Front Office. Sequoia is also developing a "one way transfer" mechanism within Combine to more easily transfer software from Combine running in commercial AWS up to the IC's AWS Regions.
+
+#### AWS Endpoints
+
+The fifth and final key difference between the IC's AWS and commercial AWS involves differences in the networking of AWS services. The IC's AWS utilizes service endpoints with different DNS names than those found in commercial AWS.
+
+At this point in time, it is not possible to fully simulate the differing endpoints names. However, training around this issue, and workarounds for it, are part of the Combine on boarding process. Sequoia personnel with hands on experience working these issues are available to support customers in Combine to ensure successful software migrations to C2S.
+
+##### Conclusion
+
+Sequoia's Combine is a powerful and mature tool that dramatically lowers the barrier to entry for customers who want to deliver their solutions to the Intelligence Community, or who want an unclassified development environment that mirrors its classified counterparts.
+
+Combine is available for an initial enrollment fee (which covers provisioning the account, providing on-boarding training, and initial support), along with a monthly maintenance fee (which covers continual updates and email/phone support). AWS utilization charges are passed back to the customer at a discounted rate.
+
+In additional to access to the Combine environment itself, enrollment in the Combine program gives you access to Sequoia's IC cleared professionals who can provide custom consulting on specific issues as needed.
+
+Our customers see an immediate return on investment from deploying in Combine and getting an immediate head start on the process of deploying software to the IC.
+
+For more information or to join one of our customer cohorts please email [aws@sequoiainc.com](mailto:aws@sequoiainc.com)!

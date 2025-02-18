@@ -1,0 +1,384 @@
+#### Introduction
+
+In the [first post](https://blogs.sequoiainc.com/blockchain-dev-part-1-full-ethereum-node-in-aws/) of this series I discussed how to setup and configure a full Ethereum node in AWS.
+
+With that as a foundation, I want to move on to showing how to interact with that node via RPC *using an AWS Lambda function*. This enables DApp development to leverage benefits of "serverless" software architecture while still maintaining the isolation and security of our original architecture. 
+
+I will be creating a simple AWS Lambda function that returns the current balance of a wallet address. I will report this value on my personal site: [stephenmouring.name](https://stephenmouring.name).
+
+*NOTE: The motivation for this is because I have several Ethereum mining rigs that send their proceeds to a "mining" wallet address. When that cache reaches a certain point, I transfer the balance into [Coinbase](https://coinbase.com). I want to be able to keep an eye on the balance of that wallet so I know when it is time for a transfer.*
+
+#### Architecture
+
+As you may recall from the last blog, our Ethereum node is running in a private subnet which makes it inaccessible from the public internet. Normally this would prevent it from being invoked by an AWS Lambda function, since the function would be unable to access its private IP address.  
+
+However, AWS Lambda has the ability to execute a function *inside* a VPC, giving us the private IP space access we need. We will leverage this technique to support a serverless blockchain architecture.
+
+I will be implementing the function in Java and using the [web3j](https://github.com/web3j/web3j) framework to interact with the Ethereum node via its RPC interface. To properly build a Java artifact capable of running as an AWS Lambda function will require some specific build configurations which I will cover in depth.
+
+Let's get started by setting up the Java project.
+
+#### Java - Source Code
+
+For this function, I created a simple Java class. I will give you the full source listing, then break it down section by section.
+
+```
+package com.smouring;
+
+import org.apache.commons.lang3.StringUtils;
+
+import com.amazonaws.services.lambda.runtime.Context; 
+import com.amazonaws.services.lambda.runtime.RequestHandler;
+
+import org.web3j.protocol.Web3j;
+import org.web3j.protocol.http.HttpService;
+import org.web3j.protocol.core.methods.response.EthGetBalance;
+import org.web3j.protocol.core.DefaultBlockParameterName;
+import org.web3j.utils.Convert;
+
+import java.math.BigDecimal;
+
+import java.util.concurrent.ScheduledExecutorService;
+
+public class EthBalance implements RequestHandler<Object, String> {
+    private static final String DEFAULT_ADDRESS = "0x98a3971501633d9C2754CF1CD67eDB5A12531294";
+    
+    public static void main(String[] args) {
+        System.out.println("Starting from CLI.");
+        System.out.println();
+        
+        EthBalance eb = new EthBalance();
+        
+        if (args.length == 0) {
+            System.out.println(eb.get(DEFAULT_ADDRESS));
+        } else if (args.length == 1 && StringUtils.isNotBlank(args[0])) {
+            System.out.println(eb.get(args[0]));
+        } else {
+            System.out.println("Usage: [eth address]");
+        }
+    }
+  
+    public String handleRequest(Object address, Context context) {
+        if (address instanceof String) {
+            return get((String)address);
+        } else {
+            return get(DEFAULT_ADDRESS);
+        }
+    }
+
+    private String get(String address) {
+        if (StringUtils.isBlank(address)) {
+            address = DEFAULT_ADDRESS;
+        }
+
+        try {
+            Web3j web3 = Web3j.build(new HttpService("http://10.0.103.106:5000"));
+            EthGetBalance balance = web3.ethGetBalance(address, DefaultBlockParameterName.LATEST).send();
+            web3.shutdown();
+            
+            return Convert.fromWei(new BigDecimal(balance.getBalance()), Convert.Unit.ETHER).toString();
+        } catch (Exception e) {
+            throw new RuntimeException("Error getting ETH balance for [" + address + "]!", e);
+        }
+    }
+}
+```
+
+First of all notice that we are implementing the `RequestHandler` interface:
+
+```
+public class EthBalance implements RequestHandler<Object, String> 
+```
+
+This is [provided by Amazon](https://docs.aws.amazon.com/lambda/latest/dg/java-programming-model-handler-types.html) and offers a convenient hook for interfacing Java with the AWS Lambda engine, including simplifying the marshalling of input and output parameters.
+
+Next, I set a default address to use:
+
+```
+private static final String DEFAULT_ADDRESS = "0x98a3971501633d9C2754CF1CD67eDB5A12531294";
+```
+
+*NOTE: Please feel free to send any ETH tips to that address! ;-)*
+
+For my immediate purposes, I only want to check my own address. However, I wanted to make the tool general purpose for any possible future uses. Thus I provide the ability to pass in an address to check as well as offering a command line only version of the tool (which also makes testing simpler.)
+
+```
+public static void main(String[] args) {
+    System.out.println("Starting from CLI.");
+    System.out.println();
+    
+    EthBalance eb = new EthBalance();
+    
+    if (args.length == 0) {
+        System.out.println(eb.get(DEFAULT_ADDRESS));
+    } else if (args.length == 1 && StringUtils.isNotBlank(args[0])) {
+        System.out.println(eb.get(args[0]));
+    } else {
+        System.out.println("Usage: [eth address]");
+    }
+}
+```
+
+The above code just checks to see if a command line argument was passed in and, if so, uses it as the address. If no command line arguments were passed in, it uses the default address. Otherwise, it just prints the usage. The actual RPC call is encapsulated in the `get(String address)` method.
+
+Next we have the AWS API method implementation:
+
+```
+public String handleRequest(Object address, Context context) {
+    if (address instanceof String) {
+        return get((String)address);
+    } else {
+        return get(DEFAULT_ADDRESS);
+    }
+}
+```
+
+This is the hook that the AWS Lambda function engine will invoke. It likewise defers to the `get(String address)` method.
+
+*NOTE: I am accept a type of `Object` and manually checking if it is a String. This is a bit of a design compromise. Normally I would require the invoker to pass data of a fixed type. However, I am using this function in several contexts including API Gateway where I cannot always control the type of the input. Accept `Object` and checking the type makes it more resilient to different inputs and makes it easier to test in other contexts.*
+
+The actual call to the RPC server is here:
+
+```
+private String get(String address) {
+    if (StringUtils.isBlank(address)) {
+        address = DEFAULT_ADDRESS;
+    }
+
+    try {
+        Web3j web3 = Web3j.build(new HttpService("http://10.0.103.106:5000"));
+        EthGetBalance balance = web3.ethGetBalance(address, DefaultBlockParameterName.LATEST).send();
+        web3.shutdown();
+        
+        return Convert.fromWei(new BigDecimal(balance.getBalance()), Convert.Unit.ETHER).toString();
+    } catch (Exception e) {
+        throw new RuntimeException("Error getting ETH balance for [" + address + "]!", e);
+    }
+}
+```
+
+*NOTE: Change the IP address above to match your Ethereum node's IP address.*
+
+The method defaults to `DEFAULT_ADDRESS` if no other address is provided.
+
+It instantiates an instance of `Web3j`. Notice that it is using the *private IP address* of the Ethereum node. This is because we will configure the AWS Lambda function to be executing *inside our VPC* where it will have access to our private IP space.
+
+Next it sends a `EthGetBalance` request. 
+
+It calls `web3.shutdown()` which releases several thread resources that `Web3j` creates and enables a clean JVM termination.
+
+Finally, it converts the balance from "wei" to "ether" and returns the result as a `String`. Invoked via the command line it will print this to the console. Invoked via as a AWS Lambda function it will return that `String` value to the caller.
+
+Excellent! Next we will move on to the build process necessary to package this code for deployment to AWS Lambda!
+
+#### Java - Maven Build
+
+When you are using Java as the implementation for AWS Lambda, Amazon requires the JAR to be formatted in a specific manner. Their [documentation](https://docs.aws.amazon.com/lambda/latest/dg/lambda-java-how-to-create-deployment-package.html) is very helpful as always.
+
+I elected to use Maven for my build tool, partly because I needed a refresher on Maven and partly because it was the path of least resistance.
+
+As above, I will start with the entire `pom.xml` file and then highlight specific sections:
+
+```
+<project 
+      xmlns="http://maven.apache.org/POM/4.0.0" 
+      xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+      xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+
+  <groupId>com.smouring</groupId>
+  <artifactId>function-eth-balance</artifactId>
+  <packaging>jar</packaging>
+  <version>1.0</version>
+  <name>function-eth-balance</name>
+  
+  <dependencies>
+    <dependency>
+      <groupId>org.apache.commons</groupId>
+      <artifactId>commons-lang3</artifactId>
+      <version>3.7</version>
+    </dependency>
+    <dependency>
+      <groupId>org.web3j</groupId>
+      <artifactId>core</artifactId>
+      <version>3.5.0</version>
+    </dependency>
+    <dependency>
+      <groupId>com.amazonaws</groupId>
+      <artifactId>aws-lambda-java-core</artifactId>
+      <version>1.2.0</version>
+    </dependency>
+  </dependencies>
+  
+  <properties>
+    <maven.compiler.source>1.8</maven.compiler.source>
+    <maven.compiler.target>1.8</maven.compiler.target>
+  </properties>
+
+  <build>
+    <plugins>
+      <plugin>
+        <groupId>org.codehaus.mojo</groupId>
+        <artifactId>exec-maven-plugin</artifactId>
+        <version>1.6.0</version>
+        <configuration>
+             <mainClass>com.smouring.EthBalance</mainClass>
+        </configuration>
+      </plugin>      
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-shade-plugin</artifactId>
+        <version>2.3</version>
+        <configuration>
+          <createDependencyReducedPom>false</createDependencyReducedPom>
+        </configuration>
+        <executions>
+          <execution>
+            <phase>package</phase>
+            <goals>
+              <goal>shade</goal>
+            </goals>
+            <configuration>
+              <filters>
+                <filter>
+                  <artifact>*:*</artifact>
+                  <excludes>
+                    <exclude>META-INF/*.SF</exclude>
+                    <exclude>META-INF/*.DSA</exclude>
+                    <exclude>META-INF/*.RSA</exclude>
+                  </excludes>
+                </filter>
+              </filters>
+            </configuration>
+          </execution>
+        </executions>
+      </plugin>
+    </plugins>
+  </build>
+</project>
+```
+
+Let's start with the dependencies.
+
+```
+<dependencies>
+  <dependency>
+    <groupId>org.apache.commons</groupId>
+    <artifactId>commons-lang3</artifactId>
+    <version>3.7</version>
+  </dependency>
+  <dependency>
+    <groupId>org.web3j</groupId>
+    <artifactId>core</artifactId>
+    <version>3.5.0</version>
+  </dependency>
+  <dependency>
+    <groupId>com.amazonaws</groupId>
+    <artifactId>aws-lambda-java-core</artifactId>
+    <version>1.2.0</version>
+  </dependency>
+</dependencies>
+```
+
+I am depending on [Apache Commons](https://commons.apache.org/) for various utility method, and also on `web3j` for the RPC calls. The third dependency is the AWS Lambda Java API (`aws-lambda-java-core`) library provided by Amazon. This provides the `RequestHandler` interface we are utilizing..
+
+Next in the `pom.xml` there is a bit of magic to set the right Java version for the compiler. The `web3j` library requires Java 1.8 or above, so we require that in the build file:
+
+```
+<properties>
+  <maven.compiler.source>1.8</maven.compiler.source>
+  <maven.compiler.target>1.8</maven.compiler.target>
+</properties>
+```
+
+*NOTE: I had a problem early on where I was getting an obscure compilation error ("illegal type in constant pool") whenever I referenced `web3j`. The issue was that even though my `PATH` was set to Java 1.8, Maven was using Java 1.7. You can verify which version of Java Maven is use via the `mvn-version` command. Make sure you set `$JAVA_HOME` in your `~/.bashrc` script as that is what Maven will use.*
+
+Finally, I added two plugins to my build. The first one is `exec` which just make it easier to run the program via the command line:
+
+```
+<plugin>
+  <groupId>org.codehaus.mojo</groupId>
+  <artifactId>exec-maven-plugin</artifactId>
+  <version>1.6.0</version>
+  <configuration>
+       <mainClass>com.smouring.EthBalance</mainClass>
+  </configuration>
+</plugin>      
+```
+
+With that plugin in place you can type `mvn exec:java` and it will run the command line version of the tool (you can manually specify which class to run via `-DmainClass=<class name>` as well.) This makes testing much simlper.
+
+The other plugin is the `shade` plugin. This builds a JAR file artifact out of your project that is compatible with deploying to AWS Lambda.
+
+```
+<plugin>
+  <groupId>org.apache.maven.plugins</groupId>
+  <artifactId>maven-shade-plugin</artifactId>
+  <version>2.3</version>
+  <configuration>
+    <createDependencyReducedPom>false</createDependencyReducedPom>
+  </configuration>
+  <executions>
+    <execution>
+      <phase>package</phase>
+      <goals>
+        <goal>shade</goal>
+      </goals>
+      <configuration>
+        <filters>
+          <filter>
+            <artifact>*:*</artifact>
+            <excludes>
+              <exclude>META-INF/*.SF</exclude>
+              <exclude>META-INF/*.DSA</exclude>
+              <exclude>META-INF/*.RSA</exclude>
+            </excludes>
+          </filter>
+        </filters>
+      </configuration>
+    </execution>
+  </executions>
+</plugin>
+```
+
+One thing to note about the above is the `<filter>` in the `<configuration>` section. Since this plugin combines multiple JAR files, this filter removes the signing data from any child JAR (which would be rendered invalid if it was applied to the combined JAR).
+
+Running `mvn package` will product a combined (or "shaded") JAR file. This JAR file can be uploaded to S3 for latter sourcing in your AWS Lambda function.
+
+#### AWS Lambda Function
+
+We are now ready to create our AWS Lambda function!
+
+On the AWS Console, go to the Lambda console and click Create Function (or Get Started if this is your first function). Make sure you have selected the "Author from scratch" option. Enter a Name and select Java 8 as your Runtime.
+
+You will need to specify an execution role for AWS Lambda. To run your function inside a VPC you need to grant it additional permissions. Specifically you should attach the `AWSLambdaVPCAccessExecutionRole` policy (managed by Amazon) to whatever role will be used to execute your Lambda function.
+
+On the next screen you will need to enter several key pieces of configuration. 
+
+In the Function Code section, you will need to select the "Upload a file from Amazon S3" option for Code Entry. Then paste the location of the "shaded" JAR you uploaded to S3 in the previous section. For the Handler, you need to specify the full class name, a colon, and then the method name. For example:
+
+```
+com.smouring.EthBalance:handleRequest
+```
+
+Now, moving the Network section. Here you can select a VPC to execute your function inside. This is necessary to give your function access to the private IP address space that your Ethereum node is running in.
+
+Select your VPC and several subnets in which the AWS Lambda functions are allowed to execute. I selected all my private subnets to make sure the AWS Lambda function could be run in a highly available fashion.
+
+That is all the mandatory configuration you need! Review the other settings as appropriate, then Test your function.
+
+You have to create a Test Event to Test the function. I created a simple Test Event that just contained the string value of the address I wanted to use. JSON is not strictly required.
+
+If your function is successful it should return the balance in ether of the address you specified!
+
+#### Conclusion
+
+Congratulations! You now have a mechanism for executing serverless calls against the Ethereum blockchain!
+
+For more information on how you can better configure and/or leverage AWS Lambda functions, I have a few other blogs:
+
+[Using Lambdas For Simple APIs](https://blogs.sequoiainc.com/aws-using-lambdas-for-simple-apis/) - Discusses how to make AWS Lambda functions accessible over HTTP/HTTPS via API Gateway.
+
+[DevOps Pipeline For AWS Lambda Functions](https://blogs.sequoiainc.com/aws-devops-pipeline-for-lambda-functions/) - Discusses how to setup an automated pipeline for deploying changes to your AWS Lambda functions.
+
+Questions? Comments? Email me at smouring@sequoiainc.com!

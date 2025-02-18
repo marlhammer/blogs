@@ -1,0 +1,182 @@
+<h2>Introduction</h2>
+
+<p>Seldom do the things I play with in my spare time (Raspberry Pi, Arduino, Android, etc.) intersect with the technologies I work&nbsp;with at work (Java, Java... And... Uh... Java.)</p>
+
+<p>But now is one of those rare times! I have admired AWS from afar and been keen to dive in and learn more about it for a while, even going so far as to dabble with it a couple of months ago... This has now started to coincide with work, were we are scheduled to transition all our infrastructure to AWS in a matter of a few months. Time to get busy!</p>
+
+<p>As I explore I plan to write a series of blogs on the different problems I tackle with AWS. I wanted to first write an introductory blog to AWS and, in particular, using the Java API so that future blogs could reference it without having to cover that ground each time.</p>
+
+<p>So here we go!</p>
+
+<h2>AWS Basics</h2>
+
+<p>AWS comprises many many different services. From on demand virtual machines (EC2) and distributed storage (S3) to prepackaged database solutions (RDS) and flexible MapReduce clouds (EMR). An in depth discussion on each service is beyond the scope of this blog. Amazon provides a lot of information on the <a href="http://aws.amazon.com">AWS page</a>. Tutorials and in depth information is available for many AWS services as <a href="http://kindle.amazon.com">Kindle Books</a> as well.</p>
+
+<p>I will cover the basics of a few of them here as a foundation moving forward and leave more detailed explanations to future blogs or the resources listed above.</p>
+
+<h3><em>Regions and Availability Zones</em></h3>
+
+<p>Before we talk about AWS services we need to understand a little about Amazon&#39;s architecture. Amazon divides AWS into Regions. A Region is a broad geographic area that essentially&nbsp;encompasses many individual data centers. Regions determine the legal jurisdiction of your operations and there are some differences between Regions (such as with pricing) as well as additional cost&nbsp;to moving&nbsp;data between Regions. You should select the Region (or Regions) that correspond most closely to your user base to keep latency to a minimum.</p>
+
+<p>Availability Zones are a subset of a region and essentially correspond to a single data center (or at least, a small group of data centers). Availability Zones are isolated from one another and separated by some physical distance (tens of miles at least I am told.)&nbsp;Operating in more than one Availability Zone provides assurance that the impact of physical calamities (storms, flooding, tornados, power loss, and so forth) will be minimized.</p>
+
+<h3><em>EC2</em></h3>
+
+<p>EC2 stands for Elastic Compute Cloud and is Amazon&#39;s &quot;virtual machine&quot; service. You can create an EC2 &quot;instance&quot; which corresponds to a virtual machine running on AWS infrastructure. Each instance has an &quot;instance type&quot; which defines its allocation of CPU, RAM, Storage, as well as its cost to run per hour. Each instance also has an &quot;AMI&quot; (Amazon Machine Image) which is like a virtual machine image that defines the operating system and any prepackaged configuration or software.&nbsp;You can define security groups that regulate what can and cannot enter an EC2 instance, much like a virtual firewall.&nbsp;</p>
+
+<h3><em>S3</em></h3>
+
+<p>S3 stands for Simple Storage System and is Amazon&#39;s distributed storage service. Data in S3 is organized into &quot;buckets&quot;. Each bucket can hold many &quot;objects&quot;. Each object corresponds to a single file and can vary in size between 0 bytes and 5 terabytes. Objects in S3 are stored as key value pairs, where the key is the name of the object and the value is the object itself.</p>
+
+<h3><em>EBS</em></h3>
+
+<p>EBS stands for Elastic Block Storage and is an alternative storage service to S3. Data in EBS is stored&nbsp;in a &quot;volume&quot;. A volume is essentially a file system that can be mounted to a specific EC2 instance. Much like a flash drive, an EBS volume is persistant (when the EC2 instance is terminated, the data stored on the volume persists) but can only be mounted to a single instance at a time.</p>
+
+<h3><em>VPC</em></h3>
+
+<p>VPC stands for Virtual Private Cloud and is Amazon&#39;s way of organizing your AWS services into a single isolated network. A VPC provides a network boundary, within which you can use a local IP address space. When you create an AWS account you are given a default VPC.</p>
+
+<h3><em>Other Concepts</em></h3>
+
+<p>There are a few other important concepts that are not technically AWS services but are relevant to understand how AWS services work.</p>
+
+<ul>
+    <li>Security Group - A security group is object that represents a set of access rules. A security group can be named and tagged (see below) and then applied to different AWS services (such as an EC2 instance or RDS server.)<br />
+    &nbsp;</li>
+    <li>Elastic IP - An elastic IP is a fixed IP address that is publically accessible from the internet. Elastic IP addresses can be created in your AWS account and then assigned to particular EC2 instances.<br />
+    &nbsp;</li>
+    <li>Tags - Almost every AWS service can be given user defined tags. A tag is simple a key value pair that describes the service in some way. For example, you might create a &quot;team&quot; tag that defines which development team is responsible for this particular AWS service. You can have up to 10 tags per resource, and a lot of functionality can be built around tags. More on this in a future blog!</li>
+</ul>
+
+<p>&nbsp;</p>
+
+<h2>Getting Setup</h2>
+
+<p>To get started with AWS you first need to create an AWS account by visiting <a href="http://aws.amazon.com">here</a> and clicking Sign Up. To create an account you need to provide billing information but in most cases you can take advantage of the AWS Free Tier (by using Micro EC2 Instances and so forth).</p>
+
+<p>Once you have an account you should arrive at the AWS Management Console in your browser, which has links to each of the dashboards for each of the core AWS services.</p>
+
+<p><em>NOTE: You will notice that on the far upper right there is your user name which displays a dropdown menu. That allows you to see your billing information and modify account preferences.</em></p>
+
+<p><em>NOTE: You will notice also that on far upper right there is a Region name and a drop down list allowing you to change your console to view different regions. </em></p>
+
+<p>The Management&nbsp;Console is very powerful, and in many cases more than enough to manage your AWS services. However, there are several ways to interact with and control AWS services <em>programmatically&nbsp;</em>as well. The goal of this blog, beyond introducing you to AWS, is to learn to utilize these programmatic controls, and in particular, the Java API.</p>
+
+<p>To that end, we will do a couple of simple tasks in AWS that will help you explore AWS and also get the infrastructure setup to start experimenting with the Java API.</p>
+
+<h3><em>Create Access Keys</em></h3>
+
+<p>Before you can access AWS programmatically you need to create a set of credentials that allow you to &quot;log in&quot; to AWS so to speak. AWS provides a very deep system for creating&nbsp;users and groups of users with access constraints. Each user can create credentials for programmatic access. For simplicity we will just create security credentials for the root user (the owner of the account) but please be aware that security best practices dictate that you create &quot;least privileged&quot; accounts for each user according to their respective role.</p>
+
+<p>To create an &quot;access key&quot; pair to be used whenever you want to access AWS programmtically, you must go to the Security Credentials link which is found in the drop down list on the upper right corner of the Management Console&nbsp;found by clicking on your user name.</p>
+
+<p>At this point you will receive a dialog that gives you the same warning I just did about creating least privileged users. Click &quot;Continue to Security Credentials&quot; to proceed. You will an option for &quot;Access Keys (Access Key ID and Secret Access Key)&quot; which you should click. You may then click Create New Access Key. You will be prompted to download your access key pair. Save this file in a safe and secure place for future reference.</p>
+
+<h3><em>Create an EC2 Instance</em></h3>
+
+<p>Returning to the Management Console you can now proceed to creating your own EC2 instance! Click on the EC2 icon to go to the EC2 console.</p>
+
+<p>You can get started by clicking on the &quot;Launch Instance&quot; button which will start an EC2 launch wizard. In the first step you select your AMI. You can select a premade AMI provided by Amazon, or find one provided by a third party in their Marketplace, or upload your own custom one. Your AMI will determine what OS, software, and configuration your instance has and therefore what purpose it will serve in your infrastructure. For sake of education I selected the Amazon Linux AMI (Free Tier Eligible) which is the simplest &quot;stock&quot; AMI I could find. &nbsp;</p>
+
+<p>In the next step you select your instance&#39;s type. As you can see from the list of options, there is a vast selection of different instance types with widely varying performance characteristics. Some are compute optimizied, others are memory optimized, and others still are storage optimized. For sake of education I selected the Micro instance type (which is Free Tier Eligible).</p>
+
+<p>The final step in the EC2 creation wizard&nbsp;is optional and provides advanced options for customizing your EC2 instance. None of these are relevant for this blog at the moment, but it is probably worth looking at the options for the future.</p>
+
+<p>After that final step you will be taken to a summary page. On this summary page you have a few options for configuring the instance before it launches. The one of most interest is the Security Groups.</p>
+
+<p>When you expand the Security Groups section you have the option to Edit the Security Groups. By default AWS creates a Security Group each time you use the EC2 instance wizard. However, you can create your own Security Groups and associate them with your EC2 instances prior to launch. To create / modify your own Security Groups you need to go to the Security Groups console.</p>
+
+<p>At the moment, I do not know how to go directly to the Security Groups console, but it is accessible through several of the other consoles, including the EC2 console. There is a link to it on the left navigation bar on EC2 console page under Network &amp; Security.&nbsp;</p>
+
+<p>If you are satisified with your security configurations, you can click Launch. This will open a dialog giving you the opportunity to create or assign an SSH Key Pair to your Instance.</p>
+
+<p><em>NOTE: This is <strong>different</strong> than your Access Key Pair. This is an SSH key pair used to access your instance. Like Security Groups, you can create and manage SSH key pairs independently from the Key Pairs console. (The Key Pairs conosle is accessed similiarly to the Security Groups console. It is a secondary link off of the EC2 console, on the left navigation bar under network &amp; Security.)</em></p>
+
+<p>It can create a new pair by default or can reuse an existing key pair. You can download this key pair and use it to SSH into the instance using your SSH client of choice. Amazon provides detailed instructions <a href="http://docs.aws.amazon.com/AWSEC2/latest/UserGuide/AccessingInstances.html">here</a>.</p>
+
+<p>And finally, after all those steps, you can launch your EC2 instance!</p>
+
+<h3><em>Create an S3 Bucket</em></h3>
+
+<p>Starting from the AWS Management Console, click on the S3 icon to enter the S3 console. Now click the &quot;Create Bucket&quot; button. You will be prompted to name your bucket (which must be unique <em>across the entirety of S3</em>... Think about that for a moment.)</p>
+
+<p>S3 uses a slightly different Region scheme than the rest of AWS. There is a US Standard Region which actually spans the east and west coasts, but has different behavior characteristics that the other S3 Regions. (All S3 Regions except for US Standard provide &quot;read after write&quot; consistency. US Standard, due to its encompassing a wider geographic range, does&nbsp;<em>not</em>&nbsp;provide that level of consistency.) The latency of US Standard is comaprable to the Virginia region, but given the consistency differences, I think it would be better to chose a different region (such as Oregon) unless latency is a major issue for you.</p>
+
+<p>That is all there is to it!</p>
+
+<p>You can upload files directly from the S3 Console if you wish to experiment. Just select a bucket name from the list and click Upload.</p>
+
+<p>&nbsp;</p>
+
+<h2>Amazon CLI</h2>
+
+<p>A short side note.</p>
+
+<p>In addition to the Java API (and any other programming language&#39;s API) Amazon also provides a command line interface to interact with AWS. It can be downloaded <a href="http://aws.amazon.com/cli/">here</a>. There are installers for Windows, Mac, and Linux.</p>
+
+<p><em>NOTE: For Windows, you need to install the CLI and then put the CLI directory on your system path.</em></p>
+
+<p>Once installed, the CLI needs to be configured. To configure it, run <tt>aws configure</tt> and, when prompted, enter your Access Key Pair (see above) and Region name.</p>
+
+<p>Now, from the command line (or command prompt in Windows), you can issue CLI commands to AWS. A list of available commands can be seen by entering <tt>aws help</tt>. The <tt>help</tt> directive can be appended to most commands and will elaborate on that particular command.</p>
+
+<p>A handy second tool for scripting and those of us who enjoy using the command line.</p>
+
+<p>&nbsp;</p>
+
+<h2>The API</h2>
+
+<p>We are finally ready to dive into using the Java API to programmatically control your AWS services!</p>
+
+<p>First you need to <a href="http://aws.amazon.com/sdkforjava/">download</a> the latest version of the AWS API. This gives you a JAR file that you can integrate into your code as a dependency on your classpath. For the full API documentation see <a href="http://docs.aws.amazon.com/AWSJavaSDK/latest/javadoc/index.html">here</a>.</p>
+
+<p>There is a wide range of different code&nbsp;interfaces that allow interaction with AWS services. In fact, I am told that Amazon uses its own APIs&nbsp;internally to implement its Management Console. An impressive example of &quot;eating their own dogfood&quot; which ensures a robust and well tested API.</p>
+
+<p>In future blogs I will dive in depth into the different aspects of the API relevant to the problem to solve in that blog. For now, I want&nbsp;to demonstrate a simple &quot;Hello World&quot; application that will give a clear path to using the API that can be elaborated on later.</p>
+
+<p>To demonstrate using the API I wrote a very simple program that simply uploads a file to an S3 bucket. (To run this code you will need to create an S3 bucket. See &quot;Creating an S3 Bucket&quot; section above.)</p>
+
+<p>The code is available on <a href="https://gist.github.com/marlhammer/db985c52b6ba8e7057ce">GitHub</a>.</p>
+
+<p>The relevant portion is:</p>
+
+<p>&nbsp;</p>
+
+<div style="background:#eee; border:1px solid #ccc; padding:5px 10px"><tt>AmazonS3Client s3Client = new AmazonS3Client(<br />
+&nbsp; &nbsp; new ClasspathPropertiesFileCredentialsProvider()<br />
+);</tt></div>
+
+<div style="background:#eee; border:1px solid #ccc; padding:5px 10px"><tt>s3Client.setRegion(Region.getRegion(Regions.US_EAST_1));</tt></div>
+
+<div style="background:#eee; border:1px solid #ccc; padding:5px 10px"><tt>PutObjectRequest putObjectRequest = new PutObjectRequest(<br />
+&nbsp; &nbsp; &quot;&lt;YOUR BUCKET NAME&gt;&quot;, &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp;// Bucket Name<br />
+&nbsp; &nbsp; &quot;&lt;YOUR TEST FILE NAME&gt;&quot;, &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; // Object Name<br />
+&nbsp; &nbsp; new File(&quot;</tt>&lt;YOUR TEST FILE NAME&gt;<tt>&quot;) &nbsp; // File<br />
+);</tt></div>
+
+<div style="background:#eee; border:1px solid #ccc; padding:5px 10px"><tt>s3Client.putObject(putObjectRequest);</tt></div>
+
+<p>&nbsp;</p>
+
+<p>First, all API calls start with the appropriate client (<tt>AmazonS3Client</tt>&nbsp;in this example)&nbsp;that must be configured with your Security Credentials and the correct <tt>Region</tt>.</p>
+
+<p>The Security Credentials can be provided in one of two ways. You can supply the client with an <tt>AwsCredentialsProvider</tt>. There are many different implementations&nbsp;that AWS provides, and since it is an interface you may also write your own. You can also supply the client with an <tt>AwsCredentials</tt> object. As above, there are many different implementations that AWS provides, and, as above, since it is an interface you may also write your own.</p>
+
+<p>In the example above I used the <tt>ClasspathPropertiesFileCredentialsProvider </tt>which by default looks for a <tt>AwsCredentials.properties</tt> file <em>on the classpath</em>, with the following contents:</p>
+
+<div style="background:#eee; border:1px solid #ccc; padding:5px 10px"><tt>accessKey=&lt;YOUR ACCESS KEY&gt;<br />
+secretKey=&lt;YOUR SECRET KEY&gt;</tt></div>
+
+<p>The Security Credentials can be found from the AWS Management Console (see &quot;Create Access Keys&quot; section above.)</p>
+
+<p>The second requirement for the <tt>AmazonS3Client</tt> is to set the Region, which is self explanatory. Use the appropraite enum value for the Region in which your AWS services are running.</p>
+
+<p>Once we have the client properly configured, uploading a file is trivial. Construct a <tt>PutObjectRequest</tt> with the bucket name, object name (what you want the uploaded file to be named in S3), and a <tt>File </tt>to upload. The client executes the request. Go to your S3 console in AWS and you should see the sample file uploaded.</p>
+
+<p>&nbsp;</p>
+
+<p>Questions? Comments? Email me at: smouring@sequoiainc.com!</p>
+
+<p>&nbsp;</p>
+
+<p>&nbsp;</p>

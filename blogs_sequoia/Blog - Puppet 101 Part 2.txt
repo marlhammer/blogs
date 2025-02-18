@@ -1,0 +1,166 @@
+##### Introduction
+
+This is part 2 of a short series on understanding Puppet. In [part 1](https://blogs.sequoiainc.com/puppet-101-part-1/) we talked about the basic building blocks of Puppet configuration: Resources, Classes, and Nodes.
+
+Understanding how to build Puppet configuration leaves us with the question: How do we package and deploy that configuration for use?
+
+In this blog post we are going to discuss how configuration is stored and organized within Puppet, and how Puppet is then configured to run in an environment.
+
+There are two concepts to consider: Manifests and Modules. Manifests are the file format that stores your Puppet configuration (a combination of Resources, Classes, and Nodes). Modules are a bundling of Manifests and other resources into a reusable package that can be installed on a Puppet Master and used in your environment.
+
+Let's get started!
+
+##### Manifests
+
+Manifests are files that contain Resources declarations, Class definitions and/or declarations, and/or Node declarations. Puppet uses the `.pp` extension to indicate Manifest files.
+
+When a Manifest is applied to a server all stand alone Resources, all stand alone Class declarations, and the contents of any matching Node objects are used. So for example:
+
+```
+user { 'jbauer':
+    ensure      => present,
+    home        => '/home/jbauer',
+    shell       => '/bin/bash',
+}
+
+class 'security' {
+    ...
+}
+
+include security
+
+class 'tomcat' {
+}
+
+node 'web01.example.com' {
+    include tomcat
+    ...
+
+}
+```
+
+In this example, the User Resource 'jbauer' would be applied, and the Class 'security' would be applied. Unless the node was 'web01.example.com' the Class 'tomcat' would *not* be applied since it was just defined and not declared.
+
+*NOTE: Manifests can include other features outside the scope of this blog, such as variable declarations and some logic constructs.*
+
+Manifests are a simple concept. They are a collection of Resources, Classes, and Nodes and are a natural extension of what we learned in the [prior post](https://blogs.sequoiainc.com/puppet-101-part-1/).
+
+Now we need to consider how Manifests are used and organized.
+
+##### Modules
+
+Modules are a mechanism for bundling, distributing, and referencing configuration in Puppet. A Module consists of one or more Manifests along with any supporting files organized with a fixed directory structure.
+
+Puppet Modules can be installed in a known place (see below) and then referenced by name in other Modules or in Manifests.
+
+The Module directory structure is as follows:
+
+```
+<MODULE DIRECTORY>
+    -> manifests
+    -> files
+    -> templates
+    -> lib
+    -> facts.d
+    -> examples
+    -> spec
+```
+
+All of the directories are optional except for `manifests` which must contain at least one manifest called `init.pp`.
+
+`init.pp` must contain at least one Class that has the same name as the module.
+
+So for example:
+
+```
+foo
+    -> manifests
+        -> init.pp
+```
+
+Where `init.pp` contains:
+
+```
+class foo {
+    ...
+}
+```
+
+This blurs the distinction between Module and Class conceptually. In other Manifests you might do something like this:
+
+```
+include foo
+```
+
+Conceptually that *seems* like you are declaring the Module. In reality you are declaring the Class. Puppet can find the Class by searching among its Modules using the `foo` name.
+
+A Module can include other classes in other Manifest files. These classes are referenced using the Module name as a namespace. For example:
+
+```
+foo
+    -> manifests
+        -> init.pp
+        -> bar.pp
+```
+
+Where `bar.pp` contains:
+
+```
+class bar {
+    ...
+}
+```
+
+You could include `bar` in another Manifest using the following:
+
+```
+include foo::bar
+```
+
+*NOTE: Although it is outside the scope of this blog, modules also provide a way of packaging up other files for use with a module. For example, sometimes you want Puppet to deploy a File to a location on a server. The File to deploy can be put in the `files` directory and referenced in your Module's Manifests using a relative path.*
+
+Modules are installed, by default, in the `modules` directory of your environment:
+
+```
+<PUPPET_DIRECTORY>/environments/<ENVIRONMENT>/modules
+```
+
+*NOTE: Notice the presence of the `<ENVIRONMENT>` directory. Although it is outside the scope of this blog, Puppet has the ability to group different servers into different groups called "environments" that have a completely separate set of configuration. This allows you to easily support multiple server environments (such as Production, Test, and Development) without running multiple Puppet instances. For the purposes of this blog, you can just assume a single default environment.*
+
+*NOTE: Although it is outside the scope of this blog, it is important to know that, in much the same fashion as Linux packages, Puppet modules can be installed from a central repository using the `puppet module` command line tool.*
+
+Hopefully now you understand Manifest files and Modules. From the [prior blog post](https://blogs.sequoiainc.com/puppet-101-part-1/) you understand the concept of Nodes that apply specific configuration to specific servers. Next, let us bring it all together and discuss the *site manifest*.
+
+##### The Site Manifest
+
+The Site Manifest (also called the Main Manifest) is a area of Puppet configuration separate from Modules. By default, all Manifests contained in this directory:
+
+```
+<PUPPET_DIRECTORY>/environments/<ENVIRONMENT>/manifests
+```
+
+Are concatenated and executed as the Site Manifest.
+
+The Site Manifest is the starting point for calculating the "catalog" (the sum total of applicable configuration) for a node.
+
+Recalling the Puppet Master / Puppet Agent architecture, when a Puppet Agent checks in to the Puppet Master the Puppet Master evaluates the Site Manifest to calculate the catalog for the node that checked in.
+
+Recall that any standalone Resource or Class declarations are automatically applied when a Manifest is applied. This is by extension true for the Site Manifest. Similarly any Node declarations that the Site Manifest makes are compared against the name of the node that checked in and applied if applicable.
+
+*NOTE: Nodes can define their names with wild cards, alleviating the need to manually specify a node for each server you have. This also facilitates technologies like AWS autoscaling, a topic I will reserve for another blog.*
+
+Thus the Site Manifest is the starting point for Puppet. From the Site Manifest, other Modules (built in, third party, or your own) can be included, but the Site Manifest is the sole determiner of what config is applied to what servers.
+
+##### Conclusion
+
+You now have a grasp of all the fundamental building blocks of Puppet!
+
+From [Part 1](https://blogs.sequoiainc.com/puppet-101-part-1/) we learned about Resources, Classes, and Nodes, the fundamental elements of defining configuration for Puppet to manage.
+
+Now in Part 2 we learned how to represent configuration in Manifest files, package Manifests into Modules, and then defining the configuration for our system (including referencing our own Modules) through the Site Manifest.
+
+I hope in subsequent blogs to dive deeper into more advanced aspects of Puppet and cover other concepts such as controlling the order Resources are executed in, using Puppet in an environment where Servers are transient (such as AWS) using techniques such as auto-signing and node name wildcards, and other topics.
+
+For now, I hope these blogs have helped you grok Puppet's basic concepts and architecture and that you have a good foundation to learn more about Puppet!
+
+Questions? Comments? Email me at: smouring@sequoiainc.com!

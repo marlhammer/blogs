@@ -1,0 +1,120 @@
+<p>As part of my ongoing adventure to try to master Java Swing, the next challenge I faced was to improve the usability of a form submission in my customer&#39;s thick client application. Several of the fields on the form were for date input, and the date format to be used was specificed in an ugly JLabel centered underneath the field. This arrangement distorted the vertical space between the fields giving the form a ragged and disorganized look.</p>
+
+<p>I wanted to bring a little more of a web like experience to this thick client, so needed to replace this JLabel with something more elegant. I settled on a &quot;ghost text&quot; approach - were I would overlay a string on the text field when it was empty but would disappear when the field had focus or the user had entered input.</p>
+
+<p>Not as easy as it sounds. Trying to manage the state of the text field with keyboard and click listeners was impossible and unwieldy. So I needed something else.</p>
+
+<p>After some digging, I learned that Java has a whole hiearchy of <tt>ComponentUI</tt> classes which provide &quot;look and feel&quot; rendering for different components. Each <tt>Component </tt>(<tt>JTextField</tt>, <tt>JLabel</tt>, and so forth) has a corresponding <tt>ComponentUI </tt>that is associated with it that provides the actual appearance of the <tt>Component </tt>(default colors, borders, general appearance) separate from the mechanics of the <tt>Component </tt>(in the case of a <tt>JTextField</tt>, storing text, firing listeners, etc.)</p>
+
+<p>The <tt>ComponentUI</tt> subsystem allows the look and feel of a Java application to be switched out based on what platform the program is running on. Instead of having a distinct hierarchy of components for each platform (Windows, MaxOS, default Java, etc.) which would make your GUI code non-portable, Swing simply has a separate implementation of a <tt>ComponentUI</tt> for each platform and swaps them out on a platform by platform basis.</p>
+
+<p>Applying this to the problem at hand, I decided to write a custom UI for a <tt>JTextField </tt>that would handle the overlaying of the ghost text using the <tt>Graphics </tt>object.</p>
+
+<p>Here my simple attempt:</p>
+
+<div style="background:#eee; border:1px solid #ccc; padding:5px 10px"><tt>import java.awt.Color;<br />
+import java.awt.Graphics;<br />
+import java.awt.event.FocusEvent;<br />
+import java.awt.event.FocusListener;</tt></div>
+
+<div style="background:#eee; border:1px solid #ccc; padding:5px 10px"><tt>import javax.swing.plaf.basic.BasicTextFieldUI;<br />
+import javax.swing.text.JTextComponent;</tt></div>
+
+<div style="background:#eee; border:1px solid #ccc; padding:5px 10px">&nbsp;</div>
+
+<div style="background:#eee; border:1px solid #ccc; padding:5px 10px"><tt>public class JTextFieldHintUI extends BasicTextFieldUI implements FocusListener {</tt></div>
+
+<div style="background:#eee; border:1px solid #ccc; padding:5px 10px"><tt>&nbsp;&nbsp; &nbsp;private String hint;<br />
+&nbsp;&nbsp; &nbsp;private Color&nbsp; hintColor;</tt></div>
+
+<div style="background:#eee; border:1px solid #ccc; padding:5px 10px">&nbsp;</div>
+
+<div style="background:#eee; border:1px solid #ccc; padding:5px 10px"><tt>&nbsp;&nbsp; &nbsp;public JTextFieldHintUI(String hint, Color hintColor) {<br />
+&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;this.hint = hint;<br />
+&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;this.hintColor = hintColor;<br />
+&nbsp;&nbsp; &nbsp;}</tt></div>
+
+<div style="background:#eee; border:1px solid #ccc; padding:5px 10px">&nbsp;</div>
+
+<div style="background:#eee; border:1px solid #ccc; padding:5px 10px"><tt>&nbsp;&nbsp; &nbsp;private void repaint() {<br />
+&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;if (getComponent() != null) {<br />
+&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;getComponent().repaint();<br />
+&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;}<br />
+&nbsp;&nbsp; &nbsp;}</tt></div>
+
+<div style="background:#eee; border:1px solid #ccc; padding:5px 10px">&nbsp;</div>
+
+<div style="background:#eee; border:1px solid #ccc; padding:5px 10px"><tt>&nbsp;&nbsp; &nbsp;@Override<br />
+&nbsp;&nbsp; &nbsp;protected void paintSafely(Graphics g) {<br />
+&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;// Render the default text field UI<br />
+&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;super.paintSafely(g);</tt></div>
+
+<div style="background:#eee; border:1px solid #ccc; padding:5px 10px"><tt>&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;// Render the hint text<br />
+&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;JTextComponent component = getComponent();<br />
+&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;if (component.getText().length() == 0 &amp;&amp; !component.hasFocus()) {<br />
+&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;g.setColor(hintColor);<br />
+&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;int padding = (component.getHeight() - component.getFont().getSize()) / 2;<br />
+&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;int inset = 3;<br />
+&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;g.drawString(hint, inset, component.getHeight() - padding - inset);<br />
+&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;}<br />
+&nbsp;&nbsp; &nbsp;}</tt></div>
+
+<div style="background:#eee; border:1px solid #ccc; padding:5px 10px">&nbsp;</div>
+
+<div style="background:#eee; border:1px solid #ccc; padding:5px 10px"><tt>&nbsp;&nbsp; &nbsp;@Override<br />
+&nbsp;&nbsp; &nbsp;public void focusGained(FocusEvent e) {<br />
+&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;repaint();<br />
+&nbsp;&nbsp; &nbsp;}</tt></div>
+
+<div style="background:#eee; border:1px solid #ccc; padding:5px 10px">&nbsp;</div>
+
+<div style="background:#eee; border:1px solid #ccc; padding:5px 10px"><tt>&nbsp;&nbsp; &nbsp;@Override<br />
+&nbsp;&nbsp; &nbsp;public void focusLost(FocusEvent e) {<br />
+&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;repaint();<br />
+&nbsp;&nbsp; &nbsp;}</tt></div>
+
+<div style="background:#eee; border:1px solid #ccc; padding:5px 10px">&nbsp;</div>
+
+<div style="background:#eee; border:1px solid #ccc; padding:5px 10px"><tt>&nbsp;&nbsp; &nbsp;@Override<br />
+&nbsp;&nbsp; &nbsp;public void installListeners() {<br />
+&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;super.installListeners();<br />
+&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;getComponent().addFocusListener(this);<br />
+&nbsp;&nbsp; &nbsp;}</tt></div>
+
+<div style="background:#eee; border:1px solid #ccc; padding:5px 10px">&nbsp;</div>
+
+<div style="background:#eee; border:1px solid #ccc; padding:5px 10px"><tt>&nbsp;&nbsp; &nbsp;@Override<br />
+&nbsp;&nbsp; &nbsp;public void uninstallListeners() {<br />
+&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;super.uninstallListeners();<br />
+&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;getComponent().removeFocusListener(this);<br />
+&nbsp;&nbsp; &nbsp;}<br />
+}</tt></div>
+
+<div style="background:#eee; border:1px solid #ccc; padding:5px 10px">&nbsp;</div>
+
+<p><em>Code available at: <a href="https://gist.github.com/marlhammer/6532046#file-jtextfieldhintui-java">https://gist.github.com/marlhammer/6532046#file-jtextfieldhintui-java</a></em></p>
+
+<p>&nbsp;</p>
+
+<p>The code is actually very simple. There are two key parts:</p>
+
+<ol>
+    <li>Implementation of <tt>BasicTextFieldUI </tt>which provides the <tt>paintSafely()</tt> method to actually do the UI rendering and the <tt>installListeners()</tt> / <tt>uninstallListeners()</tt> methods which gives you the hooks necessary to do (2) below.</li>
+    <li>Implementation the <tt>FocusListener</tt> interface which provides the <tt>focusGained()</tt> and <tt>focusLost()</tt> methods allowing you to enable or disable the hint text depending on whether or not the component has focus. The <tt>installListeners()</tt> / <tt>uninstallListeners()</tt> methods from above then allows the <tt>JTextFieldHintUI </tt>to install itself as a focus listener on its associated component.</li>
+</ol>
+
+<p>The <tt>paintSafely()</tt> method is very simple. It calls <tt>super.paintSafely()</tt> to do the default rendering and then uses the Graphics object to draw a string over top of the underlying text field (first checking that the user has not entered any text yet.) <em>Note that depending on your UI you may need to adjust the </em><tt>inset</tt><em> and possibly </em><tt>padding</tt> <em>variables to align the hint text properly. </em></p>
+
+<p>To apply this UI to a text field, simply use the <tt>setUI()</tt> method:</p>
+
+<div style="background:#eee; border:1px solid #ccc; padding:5px 10px"><tt>JTextField field = new JTextField();</tt></div>
+
+<div style="background:#eee; border:1px solid #ccc; padding:5px 10px"><tt>field.setUI(new JTextFieldHintUI(&quot;This is a hint...&quot;, Color.gray));</tt></div>
+
+<p>And that is all there is to it!</p>
+
+<p>&nbsp;</p>
+
+<p>Questions? Comments? Email me at: smouring@sequoiainc.com</p>
+
+<p>Happy coding!</p>

@@ -1,0 +1,278 @@
+<p>Not too long ago I had the opportunity to work on a project where we indexed a significant amount of data into Lucene. Despite the improvements to Lucene indexing speed over the years, we were finding that single threaded indexing rapidly becomes a bottle neck as your data creeps into the multiple TB. Our system could support reading from multiple indexes and we had a reasonably large Hadoop cluster at our disposal, so we decided to try doing the indexing in Lucene.</p>
+
+<p><em>Note: This approach really only makes sense if you have a way of searching index shards such as using <a href="http://incubator.apache.org/blur/">Apache Blur</a> or <a href="https://lucene.apache.org/solr/">Apache Solr</a>. Otherwise the time required to merge the shards into a single index with Lucene is much more than the time you save by indexing in parallel.</em></p>
+
+<p>In our particular domain, we first needed to group our records into sets that shared a common key. That entire group was then indexed into Lucene as a single Lucene Document.</p>
+
+<p>This paradigm was a natural fit for Hadoop. Our Mappers could parse and emit each row of data with the key to group on, and the Reducer could accept each group and index it into its Lucene index. Thus, each Reducer emits a &quot;shard&quot; of the overall index, containing only the groups that that reducer processed.</p>
+
+<p>Writing the Mapper was easy. It simply needed to read data from HDFS, parse each row into our data structure, and emit that row with its appropriate key.</p>
+
+<p><em>Note: I have a <a href="http://blogs.sequoiainc.com/blogs/hadoop-optimizing-mapreduce-jobs">prior blog</a> about how to write custom MapReduce datastructures if you want to use that as a reference.</em></p>
+
+<p>Our data structure had numerous fields, so at first we just wrote it something like this:</p>
+
+<div style="background:#eee; border:1px solid #ccc; padding:5px 10px">
+<p><tt>import java.io.DataInput;<br />
+import java.io.DataOutput;<br />
+import java.io.IOException;</tt></p>
+
+<p><tt>import org.apache.hadoop.io.Text;<br />
+import org.apache.hadoop.io.Writable;</tt></p>
+
+<p><tt>public class DataStructure implements Writable {<br />
+&nbsp;&nbsp;&nbsp; public Text field1 = new Text();<br />
+&nbsp;&nbsp;&nbsp; public Text field2 = new Text();<br />
+&nbsp;&nbsp;&nbsp; public Text field3 = new Text();<br />
+&nbsp;&nbsp;&nbsp; ...</tt></p>
+
+<p><tt>&nbsp;&nbsp;&nbsp; @Override<br />
+&nbsp;&nbsp;&nbsp; public void readFields(DataInput input) throws IOException {<br />
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; field1.readFields(input);<br />
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; field2.readFields(input);<br />
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; field3.readFields(input);<br />
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; ...<br />
+&nbsp;&nbsp;&nbsp; }</tt></p>
+
+<p><tt>&nbsp;&nbsp;&nbsp; @Override<br />
+&nbsp;&nbsp;&nbsp; public void write(DataOutput output) throws IOException&nbsp; {<br />
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; field1.readFields(input);<br />
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; field2.readFields(input);<br />
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; field3.readFields(input);<br />
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; ...<br />
+&nbsp;&nbsp;&nbsp; }<br />
+}</tt></p>
+</div>
+
+<p>We then realized though that in the Reducer we wanted to aggregate multiple data structures together. Lucene would index <em>all</em> of the <tt>field1</tt> values as a single <tt>Term </tt>in the <tt>Document</tt>, all of the <tt>field2 </tt>values, and so forth.</p>
+
+<p>We wanted to avoid created a <em>second</em> data structure for the aggregate (not to mention take the performance hit of instantiating all new fields). So we changed the fields in our data structure from <tt>Text </tt>to <tt>TextSet</tt>. (Consult the <a href="http://blogs.sequoiainc.com/blogs/hadoop-optimizing-mapreduce-jobs">prior blog</a> or <a href="https://gist.github.com/marlhammer/9520918">Github</a> for the source code) and added the following method to <tt>TextSet</tt>:</p>
+
+<div style="background:#eee; border:1px solid #ccc; padding:5px 10px"><tt>public void addAll(Set&lt;String&gt; newValues) {<br />
+&nbsp;&nbsp; &nbsp;values.addAll(newValues);<br />
+}</tt></div>
+
+<p>And added a <tt>merge()</tt> method to our data structure that invoked <tt>addAll()</tt> on each of its fields.</p>
+
+<p>This allowed us, in the Reducer to do the following for aggregation:</p>
+
+<div style="background:#eee; border:1px solid #ccc; padding:5px 10px"><tt>DataStructure aggregate = new DataStructure();</tt></div>
+
+<div style="background:#eee; border:1px solid #ccc; padding:5px 10px"><tt>for (DataStructure ds : reducerInput) {<br />
+&nbsp;&nbsp;&nbsp; aggregate.merge(ds);<br />
+}</tt></div>
+
+<p>Thus we avoided any additional object instantiations and are able to use a single datastructure throughout our code!</p>
+
+<h3><strong>HDFS Syncing Local Scratch</strong></h3>
+
+<p>The most immediate problem we then encountered was that MapReduce jobs read and write to HDFS. Unfortunately, Lucene cannot index directly to a HDFS file system (and since Lucene needs lots of mutating writes it would be vastly inefficient even if it could.)</p>
+
+<p>The solution we came up with was to create a custom <tt>OutputFormat </tt>for Hadoop that would, on the sly, create a Lucene index on the local file system of the node that was executing that Reducer. Once the Reducer was committed, it would then copy that index into HDFS and erase the local copy.</p>
+
+<p>Here is the output format:</p>
+
+<div style="background:#eee; border:1px solid #ccc; padding:5px 10px"><tt>import java.io.File;<br />
+import java.io.IOException;</tt></div>
+
+<div style="background:#eee; border:1px solid #ccc; padding:5px 10px"><tt>import org.apache.hadoop.mapreduce.OutputCommitter;<br />
+import org.apache.hadoop.mapreduce.RecordWriter;<br />
+import org.apache.hadoop.mapreduce.TaskAttemptContext;<br />
+import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;</tt></div>
+
+<div style="background:#eee; border:1px solid #ccc; padding:5px 10px"><tt>public class HdfsSyncingLocalFileOutputFormat&lt;K, V&gt; extends FileOutputFormat&lt;K, V&gt; {<br />
+&nbsp;&nbsp; &nbsp;public static final String PARAMETER_LOCAL_SCRATCH_PATH = &quot;param.localScratchPath&quot;;</tt></div>
+
+<div style="background:#eee; border:1px solid #ccc; padding:5px 10px"><tt>&nbsp;&nbsp; &nbsp;private HdfsSyncingLocalFileOutputCommitter committer;</tt></div>
+
+<div style="background:#eee; border:1px solid #ccc; padding:5px 10px"><tt>&nbsp;&nbsp; &nbsp;@Override<br />
+&nbsp;&nbsp; &nbsp;public synchronized OutputCommitter getOutputCommitter(TaskAttemptContext context) throws IOException {</tt></div>
+
+<div style="background:#eee; border:1px solid #ccc; padding:5px 10px"><tt>&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;if (committer == null) {<br />
+&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;// Create temporary local directory on the local file system as pass it to the committer.<br />
+&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;File localScratchPath = new File (context.getConfiguration().get(PARAMETER_LOCAL_SCRATCH_PATH) + File.separator + &quot;scratch&quot; + File.separator + context.getTaskAttemptID().toString() + File.separator);</tt></div>
+
+<div style="background:#eee; border:1px solid #ccc; padding:5px 10px"><tt>&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;committer = new HdfsSyncingLocalFileOutputCommitter(localScratchPath, super.getOutputPath(context), context);<br />
+&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;}</tt></div>
+
+<div style="background:#eee; border:1px solid #ccc; padding:5px 10px"><tt>&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;return committer;<br />
+&nbsp;&nbsp; &nbsp;}</tt></div>
+
+<div style="background:#eee; border:1px solid #ccc; padding:5px 10px"><tt>&nbsp;&nbsp; &nbsp;@Override<br />
+&nbsp;&nbsp; &nbsp;public RecordWriter&lt;K, V&gt; getRecordWriter(TaskAttemptContext context) throws IOException, InterruptedException {<br />
+&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;return new RecordWriter&lt;K, V&gt;() {<br />
+&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;@Override<br />
+&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;public void close(TaskAttemptContext context) throws IOException, InterruptedException { }</tt></div>
+
+<div style="background:#eee; border:1px solid #ccc; padding:5px 10px"><tt>&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;@Override<br />
+&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;public void write(K key, V val) throws IOException, InterruptedException { }<br />
+&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;};<br />
+&nbsp;&nbsp; &nbsp;}<br />
+}</tt></div>
+
+<div style="background:#eee; border:1px solid #ccc; padding:5px 10px">&nbsp;</div>
+
+<p><em>Note: The code can be downloaded from <a href="https://gist.github.com/marlhammer/9520890">Github</a>.</em></p>
+
+<p>The format relies on an <tt>OutputCommitter</tt> to handle the actual syncing. It gets from <tt>Configuration </tt>the root directory on each node to store the Lucene index and passes it to the <tt>committer</tt>. The configuration parameter is set by the job driver class like so:</p>
+
+<div style="background:#eee;border:1px solid #ccc;padding:5px 10px;"><tt>getConf().set(HdfsSyncingLocalFileOutputFormat.PARAMETER_LOCAL_SCRATCH_PATH, localScratchPath);</tt></div>
+
+<p>The <tt>localScratchPath </tt>variable can be initialized from anywhere in your driver class. In our case it was read as a command line parameter.</p>
+
+<p>The format needs to be set as the output format of the job like so:</p>
+
+<div style="background:#eee; border:1px solid #ccc; padding:5px 10px"><tt>job.setOutputFormat(HdfsSyncingLocalFileOutputFormat.class);</tt></div>
+
+<p>Note: The <tt>write()</tt> and <tt>close()</tt> methods on the <tt>RecordWriter</tt> in the <tt>OutputFormat </tt>are empty, because no actual data is written to HDFS from the <tt>OutputFormat</tt>. The data is <em>side loaded</em> by the <tt>OutputCommitter</tt>.</p>
+
+<p>Without further ado:</p>
+
+<div style="background:#eee; border:1px solid #ccc; padding:5px 10px"><tt>import java.io.File;<br />
+import java.io.IOException;</tt></div>
+
+<div style="background:#eee; border:1px solid #ccc; padding:5px 10px"><tt>import org.apache.commons.io.FileUtils;<br />
+import org.apache.hadoop.conf.Configuration;<br />
+import org.apache.hadoop.fs.FileSystem;<br />
+import org.apache.hadoop.fs.Path;<br />
+import org.apache.hadoop.mapreduce.JobContext;<br />
+import org.apache.hadoop.mapreduce.JobStatus.State;<br />
+import org.apache.hadoop.mapreduce.TaskAttemptContext;<br />
+import org.apache.hadoop.mapreduce.lib.output.FileOutputCommitter;</tt></div>
+
+<div style="background:#eee; border:1px solid #ccc; padding:5px 10px"><tt>public class HdfsSyncingLocalFileOutputCommitter extends FileOutputCommitter {<br />
+&nbsp;&nbsp; &nbsp;public static final String PREFIX_LUCENE_INDEX_PART = &quot;part-&quot;;</tt></div>
+
+<div style="background:#eee; border:1px solid #ccc; padding:5px 10px"><tt>&nbsp;&nbsp; &nbsp;private final FileSystem localFileSystem;<br />
+&nbsp;&nbsp; &nbsp;private final File localScratchPath;</tt></div>
+
+<div style="background:#eee; border:1px solid #ccc; padding:5px 10px"><tt>&nbsp;&nbsp; &nbsp;private final FileSystem hdfsFileSystem;<br />
+&nbsp;&nbsp; &nbsp;private final Path hdfsSyncPath;</tt></div>
+
+<div style="background:#eee; border:1px solid #ccc; padding:5px 10px"><tt>&nbsp;&nbsp; &nbsp;public HdfsSyncingLocalFileOutputCommitter(File localScratchPath, Path hdfsSyncPath, TaskAttemptContext context) throws IOException {<br />
+&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;super(hdfsSyncPath, context);</tt></div>
+
+<div style="background:#eee; border:1px solid #ccc; padding:5px 10px"><tt>&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;Configuration conf = context.getConfiguration();</tt></div>
+
+<div style="background:#eee; border:1px solid #ccc; padding:5px 10px"><tt>&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;this.localFileSystem = FileSystem.getLocal(conf);<br />
+&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;this.localScratchPath = localScratchPath;</tt></div>
+
+<div style="background:#eee; border:1px solid #ccc; padding:5px 10px"><tt>&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;this.hdfsFileSystem = FileSystem.get(conf);<br />
+&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;this.hdfsSyncPath = hdfsSyncPath;<br />
+&nbsp;&nbsp; &nbsp;}</tt></div>
+
+<div style="background:#eee; border:1px solid #ccc; padding:5px 10px"><tt>&nbsp;&nbsp; &nbsp;public File getLocalScratchPath() {<br />
+&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;return localScratchPath;<br />
+&nbsp;&nbsp; &nbsp;}</tt></div>
+
+<div style="background:#eee; border:1px solid #ccc; padding:5px 10px"><tt>&nbsp;&nbsp; &nbsp;@Override<br />
+&nbsp;&nbsp; &nbsp;public void abortJob(JobContext context, State state) throws IOException {<br />
+&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;deleteLocalScratchPath();<br />
+&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;super.abortJob(context, state);<br />
+&nbsp;&nbsp; &nbsp;}</tt></div>
+
+<div style="background:#eee; border:1px solid #ccc; padding:5px 10px"><tt>&nbsp;&nbsp; &nbsp;@Override<br />
+&nbsp;&nbsp; &nbsp;public void abortTask(TaskAttemptContext context) {<br />
+&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;deleteLocalScratchPath();<br />
+&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;super.abortTask(context);<br />
+&nbsp;&nbsp; &nbsp;}</tt></div>
+
+<div style="background:#eee; border:1px solid #ccc; padding:5px 10px"><tt>&nbsp;&nbsp; &nbsp;@Override<br />
+&nbsp;&nbsp; &nbsp;public void commitTask(TaskAttemptContext context) throws IOException {<br />
+&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;if (localScratchPath.exists()) {<br />
+&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;syncToHdfs(context);<br />
+&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;}<br />
+&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;super.commitTask(context);<br />
+&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;deleteLocalScratchPath();<br />
+&nbsp;&nbsp; &nbsp;}</tt></div>
+
+<div style="background:#eee; border:1px solid #ccc; padding:5px 10px"><tt>&nbsp;&nbsp; &nbsp;@Override<br />
+&nbsp;&nbsp; &nbsp;public boolean needsTaskCommit(TaskAttemptContext context) throws IOException {<br />
+&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;return localScratchPath.exists() || super.needsTaskCommit(context);<br />
+&nbsp;&nbsp; &nbsp;}</tt></div>
+
+<div style="background:#eee; border:1px solid #ccc; padding:5px 10px"><tt>&nbsp;&nbsp; &nbsp;private void syncToHdfs(TaskAttemptContext context) throws IOException {<br />
+&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;if (!hdfsFileSystem.mkdirs(hdfsSyncPath)) {<br />
+&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;throw new IOException(String.format(&quot;Cannot create HDFS directory at [%s] to sync Lucene index!&quot;, hdfsSyncPath));<br />
+&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;}</tt></div>
+
+<div style="background:#eee; border:1px solid #ccc; padding:5px 10px"><tt>&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;// Create subdirectory in HDFS for the Lucene index part from this particular reducer.<br />
+&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;Path indexPartHdfsFilePath = new Path(hdfsSyncPath, PREFIX_LUCENE_INDEX_PART + context.getTaskAttemptID().getTaskID().getId());</tt></div>
+
+<div style="background:#eee; border:1px solid #ccc; padding:5px 10px"><tt>&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;if (!hdfsFileSystem.mkdirs(indexPartHdfsFilePath)) {<br />
+&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;throw new IOException(String.format(&quot;Cannot create HDFS directory at [%s] to sync Lucene index!&quot;, indexPartHdfsFilePath));<br />
+&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;}</tt></div>
+
+<div style="background:#eee; border:1px solid #ccc; padding:5px 10px"><tt>&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;for (File localFile : localScratchPath.listFiles()) {<br />
+&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;context.progress();</tt></div>
+
+<div style="background:#eee; border:1px solid #ccc; padding:5px 10px"><tt>&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;Path localFilePath = new Path(&quot;file://&quot; + localFile.getPath());</tt></div>
+
+<div style="background:#eee; border:1px solid #ccc; padding:5px 10px"><tt>&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;if (!localFileSystem.exists(localFilePath)) {<br />
+&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;throw new IOException(String.format(&quot;Cannot find local file [%s]!&quot;, localFilePath));<br />
+&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;}</tt></div>
+
+<div style="background:#eee; border:1px solid #ccc; padding:5px 10px"><tt>&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;Path hdfsFilePath = new Path(indexPartHdfsFilePath, localFile.getName());<br />
+&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;if (hdfsFileSystem.exists(hdfsFilePath)) {<br />
+&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;throw new IOException(String.format(&quot;HDFS file [%s] already exists!&quot;, hdfsFilePath));<br />
+&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;}</tt></div>
+
+<div style="background:#eee; border:1px solid #ccc; padding:5px 10px"><tt>&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;hdfsFileSystem.copyFromLocalFile(localFilePath, hdfsFilePath);<br />
+&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;}<br />
+&nbsp;&nbsp; &nbsp;}</tt></div>
+
+<div style="background:#eee; border:1px solid #ccc; padding:5px 10px"><tt>&nbsp;&nbsp; &nbsp;private void deleteLocalScratchPath() {<br />
+&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;try {<br />
+&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;FileUtils.deleteDirectory(localScratchPath);<br />
+&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;} catch(IOException e) {<br />
+&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;e.printStackTrace();<br />
+&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;}<br />
+&nbsp;&nbsp; &nbsp;}<br />
+}</tt></div>
+
+<p><em>Note: The code can be downloaded from <a href="https://gist.github.com/marlhammer/9520893">Github</a>.</em></p>
+
+<p>A lot to process there! So we will take it one step at a time.</p>
+
+<ol>
+	<li>The constructor creates two <tt>FileSystem</tt> references, one for HDFS and one for the local file system.</li>
+	<li>The local scratch path is surfaced through <tt>getLocalScratchPath()</tt>. This is so that the Reducer can create a Lucene index in the correct place and ensure that it is synced correctly. We will see that code in a moment.</li>
+	<li>The overridden <tt>abortJob()</tt> and <tt>abortTask() </tt>merely ensure the scratch directory is cleaned up if the Hadoop jobs terminates prematurely.</li>
+	<li>The overridden <tt>commitTask()</tt> calls <tt>syncToHdfs()</tt> which copies all the files in the scratch path to a corresponding location in HDFS. The base directory <em>in HDFS</em> is determined by the output path of the job which is configured through the normals means when you run the MapReduce job.</li>
+	<li>The real magic is in <tt>syncToHdfs()</tt>. It traverses all the files in the local scratch path and copies them to HDFS using the <tt>copyFromLocalFile()</tt> method call. Note: It also invokes <tt>context.progress()</tt> to ensure that Hadoop does not kill the job if the copy takes too long because it thinks it stalled.</li>
+</ol>
+
+<p>Now the actual Reducer needs to access the committer, and use the local scratch path (the contents of which will be synced automatically) to write its Lucene index.</p>
+
+<p>In the Reducer class:</p>
+
+<div style="background:#eee; border:1px solid #ccc; padding:5px 10px"><tt>private IndexWriter indexWriter;</tt></div>
+
+<div style="background:#eee; border:1px solid #ccc; padding:5px 10px"><tt>@Override<br />
+public void setup(Context context) throws IOException, InterruptedException {<br />
+&nbsp;&nbsp;&nbsp; File localScratchPath = ((HdfsSyncingLocalFileOutputCommitter)context.getOutputCommitter()).getLocalScratchPath();<br />
+&nbsp;&nbsp;&nbsp; if (!localScratchPath.mkdirs()) {<br />
+&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;throw new IOException(String.format(&quot;Cannot create [%s] on local file system!&quot;, localScratchPath.getPath()));<br />
+&nbsp;&nbsp; &nbsp;}<br />
+&nbsp;&nbsp; &nbsp;<br />
+&nbsp;&nbsp; &nbsp;indexWriter = new IndexWriter(FSDirectory.open(localScratchPath), ...);<br />
+}</tt></div>
+
+<p>The setup method gets the local scratch path from the committer, and creates a Lucene <tt>IndexWriter </tt>over that directory.</p>
+
+<p>The Reducer then adds Lucene <tt>Document</tt>s to the <tt>IndexWriter </tt>as normal in the <tt>reduce()</tt> method:</p>
+
+<div style="background:#eee; border:1px solid #ccc; padding:5px 10px"><tt>indexWriter.addDocument(doc);</tt></div>
+
+<p>These <tt>Document</tt>s are created from the aggregate data structures discussed above, with one <tt>Term </tt>per field containing all the values from all the aggregated data structures.</p>
+
+<p>Finally, the Reducer then closes the <tt>IndexWriter</tt> upon completion:</p>
+
+<div style="background:#eee; border:1px solid #ccc; padding:5px 10px"><tt>@Override<br />
+public void cleanup(Context context) throws IOException, InterruptedException {<br />
+&nbsp;&nbsp; &nbsp;indexWriter.close();<br />
+}</tt></div>
+
+<p>Under the covers the committer will then sync all the index files to HDFS and when all the Reducers are complete, each shard will be found in a &quot;part-X&quot; subdirectory in the HDFS output directory (where X is the Reducer number).</p>
+
+<p>Questions? Comments? Email me at: smouring@sequoiainc.com!</p>

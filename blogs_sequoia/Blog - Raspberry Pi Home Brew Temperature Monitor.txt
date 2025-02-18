@@ -1,0 +1,208 @@
+So I took a dive into the world of Home Brewing a few months ago... I am one of those strange people who is completely disinterested in Beer and have never acquired a taste for it, so my exploration of Home Brewing has been on the wine and meade side of the house. I currently have a batch of Dry Show Meade (made with local clover honey) aging downstairs in my basement and am planning a batch of Sweet Meade once the snow melts and I can secure large quantities of the appropriate honey... But I digress...
+
+Successfully aging a good batch of meade requires the appropriate climate. One that is cool and dry. In preparation for my meade making I wanted to get a consistent measure of my basement's temperature and humidity. The simple solution would have just put a thermometer / hydrometer down in the basement and check it once or twice a day. Maybe keep a journal of my readings.
+
+Boring...
+
+Why do something yourself when you can get a Raspberry Pi to do it for you?
+
+There are several temperature and humidity sensors that are available to wire up to your Pi. The most [basic one](https://www.amazon.com/gp/product/B007YE0SB6/ref=as_li_tl?ie=UTF8&camp=1789&creative=9325&creativeASIN=B007YE0SB6&linkCode=as2&tag=smouring-20&linkId=274315579bddfe33c22a27fe7d7e31a6) (DHT 11) is a good place to start. It has an accuracy of +/- 2 degrees for temperature and +/- 5% for humidity. For a few dollars [this one](https://www.amazon.com/gp/product/B01IT2E4ZW/ref=as_li_tl?ie=UTF8&camp=1789&creative=9325&creativeASIN=B01IT2E4ZW&linkCode=as2&tag=smouring-20&linkId=e33945ad4fa31be4d7dfe1709908a0da) (DHT 22) is available that has an accuracy of +/- 0.5 degrees for temperature and +/- .05% for humidity.
+
+Wiring up electronics on a breadboard is somewhat beyond the scope of this blog. If you have not done it before, I suggest you find one of the many excellent tutorials online and familiarize yourself the wonderful world of breadboard circuits before proceeding.
+
+Both the DHT 11 and the DHT 22 have four pins. (Exercise care inserting them into a breadboard as they are very delicate!) There is one pin for power, one pin for ground, and one pin for data. One pin is not used, but is included for stability when inserting the sensor into the breadboard.
+
+Wiring the DHT sensors is very straightforward. The only usual thing to note is that power should be applied through a resistor to the same breadboard row as the data port for it to read correctly.
+
+[Here](https://www.dropbox.com/s/38f1irhefk07zah/wiring_breadboard.jpg) is a picture of my setup.
+
+The blue wire is the data wire. Note that current is applied to that pin through a resistor as noted above.
+
+_Note: In order to interface with your Raspberry Pi properly I highly recommend you get some [Male/Female jumper cables](https://www.amazon.com/gp/product/B00ARTWJ44/ref=as_li_tl?ie=UTF8&camp=1789&creative=9325&creativeASIN=B00ARTWJ44&linkCode=as2&tag=smouring-20&linkId=2a9a7b021a9db0e8bb4222578b6ce562)._
+
+The data pin should be connected to one of your Raspberry Pi's GPIO ports. [This diagram](https://www.dropbox.com/s/2adn7xuei69zlt3/pinlayout.gif) is an extremely handy reference. For my example, I used GPIO Port 4, which is the fourth pin down on the left column.
+
+[Here](https://www.dropbox.com/s/a3idb2bi2caij3p/wiring_pi.jpg) is a picture of my Pi's wiring.
+
+The red wire is 5 volt power. The black wire is ground. The blue wire is data.
+
+The wiring is the difficult part! Once your circuit has been built and connected to your Raspberry Pi, power up the Pi and we will start handling the software side.
+
+Adafruit (which is an _outstanding_ resource for all things Arduino and Raspberry Pi!) has some open source software for communicating with the DHT sensors. The DHT sensors transmit data using a protocol that is too fast for Python to detect, so one needs to rely on a C driver to read the data from the sensor and pass it to your Python script.
+
+On your Pi, do the following:
+
+```
+mkdir temperatureMonitor
+cd temperatureMonitor
+git clone git://github.com/adafruit/Adafruit-Raspberry-Pi-Python-Code.git .
+cd Adafruit_DHT_Driver
+```
+
+The driver comes prebuilt, so you need only test it to verify it is working correctly. The driver expects two parameters: the model number of your DHT sensor (11 or 22 in most cases depending on which one you bought) and the GPIO pin you connected it to (4 in my example).
+
+To test it, execute the command as follows:
+
+```
+sudo ./Adafruit_DHT 22 4
+```
+
+You should see something like this:
+
+```
+Using pin #4
+Data (40): 0x1 0x1 0x0 0xcf 0xd1
+Temp =  20.7 *C, Hum = 25.7 %
+```
+
+You may see this instead:
+
+```
+Using pin #4
+Data (40): 0x0 0x1 0x0 0xcf 0xd1
+```
+
+This happens occasionally due to a failure of the driver to read the data from the sensor in term. Usually a second attempt finds the data without trouble.
+
+Victory! My Raspberry Pi can read the temperature and humidity of my basement!
+
+Now I want it to do it by itself...
+
+Continually monitor the sensor and reporting the data in some sort of fashion that can be easily charted seems like the next logical step.
+
+_Note: This could potentially be a perfect use case for [Ground Control](http://blogs.sequoiainc.com/blogs/raspberry-pi-camera-ground-control)!_
+
+Inspired by an Adafruit blog, I decided to plot my temperature and humidity data into a Google Docs spreadsheet to create a chart of my basement's climate over time. (I created a Google account specifically for this purpose, but you may just choose to use your normal account.)
+
+Create a Google Docs spreadsheet and record its name and API key (found in the URL of its Google Drive page.)
+
+There is a Python library called GSpread that provides an API for accessing Google Docs spreadsheets. To download and install it on your Pi, execute the following commands:
+
+```
+wget http://pypi.python.org/packages/source/g/gspread/gspread-0.1.0.tar.gz
+tar -zxvf gspread-0.1.0.tar.gz
+cd gspread-0.1.0
+sudo python setup.py install
+```
+
+GSpread will now be available to import into your Python scripts.
+
+I borrowed and modified a Python script from Adafruit that polls the sensor on a fixed interval, and submits the data to Google Docs. I will walk you through that script, which can be downloaded [here](https://gist.github.com/marlhammer/9025916).
+
+```
+#!/usr/bin/python
+
+import subprocess
+import re
+import sys
+import time
+import datetime
+import gspread
+```
+
+Standard script header and imports.
+
+_Note: We are importing `gspread` which we installed earlier. The scripts need not be colocated in the same directory to function properly._
+
+```
+# Google Account
+email       = '<YOUR GMAIL ADDRESS>'
+password    = '<YOUR GMAIL PASSWORD>'
+spreadsheet = '<YOUR SPREADSHEET NAME>'
+```
+
+Variables to store our credentials. Supply your values where appropriate.
+
+```
+# Login
+try:
+  gc = gspread.login(email, password)
+except:
+  print "Unable to log in.  Check your email address/password"
+  sys.exit()
+```
+Attempt to authenticate with Google.
+
+```
+# Open worksheet
+try:
+  worksheet = gc.open(spreadsheet).sheet1
+  # worksheet = gc.open_by_key('<YOUR SPREADSHEET KEY>')
+except:
+  print "Unable to open the spreadsheet.  Check your filename: %s" % spreadsheet
+  sys.exit()
+```
+This opens the spreadsheet for editing.
+
+_Note: You must supply your spreadsheet's API key (found in the URL of its Google Drive page)._
+
+```
+# Append data
+while(True):
+  output = subprocess.check_output(["./Adafruit_DHT", "22", "4"]);
+  print output
+
+  matches = re.search("Temp =\s+([0-9.]+)", output)
+  if (not matches):
+    time.sleep(3)
+    continue
+
+  tempC = float(matches.group(1))
+
+  tempF = tempC * 9.0;
+  tempF = tempF / 5.0;
+  tempF = tempF + 32.0;
+
+  matches = re.search("Hum =\s+([0-9.]+)", output)
+  if (not matches):
+    time.sleep(3)
+    continue
+
+  humidity = float(matches.group(1))
+
+  print "Temperature: %.1f C" % tempC
+  print "Temperature: %.1f F" % tempF
+  print "Humidity:    %.1f %%" % humidity
+```
+
+This is where the real work is done. The Python script executes the C driver and captures its console output. Note: the parameters passed to the C driver in the `subprocess.check_output` call. You should modify those based on what sensor you are using (11 or 22 or something else) and what pin you are connected to.
+
+The output is captured and matched against a regular expression to extract the temperature and humidity values. If no output is detected (as in, the sensor misfired), the loop just repeats.
+
+_Note: For ease of use, I added some logic to convert temperature from Celsius to Farenheight._
+
+Once the values are extracted they are printed to the console for validation.
+
+```
+  try:
+    values = [datetime.datetime.now(), tempC, tempF, humidity]
+    worksheet.append_row(values)
+  except:
+    print "Unable to append data.  Check your connection?"
+    sys.exit()
+```
+
+The script then attempts to add a row to the Google Docs spreadsheet with the values it extracted.
+
+```
+  # Pause for next reading
+  time.sleep(120)
+```
+
+Finally, the script waits for two minutes and then takes a fresh reading. You can adjust this time if you want a different interval.
+
+To execute this script, you simple run:
+
+```
+sudo python monitor.py
+```
+
+And you are on your merry way!
+
+I typically do the following so that the script will run in the background and persist after logging out:
+
+```
+nohup sudo python monitor.py > monitor.log &
+```
+
+Any questions? Comments? Email me at smouring@sequoiainc.com!

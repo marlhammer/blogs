@@ -1,0 +1,67 @@
+#### Combine
+
+This past June, Sequoia was pleased to announce the release of [Combine 3.0](https://blogs.sequoiainc.com/sequoia-combine-3rd-generation-release/). Since that release, we have helped many more customers in their transition to C2S. This engagement has helped us refine our migration experience and made us aware of new customer needs.
+
+We have leveraged that experience into new features and improvements for Combine 3.5 and also the creation of a new product Sequoia Harvest!
+
+We have the pleasure of announcing Combine 3.5 and Harvest 1.0 for immediate release, and would like to cover the new features and many improvements we have made!
+
+#### Combine 3.5 Features
+
+We have added several new features and improved several existing features in Combine 3.5.
+
+###### New Interface
+
+We worked with a front end engineering team to rewrite the Combine interface. This gave us an opportunity to build a cleaner, more extensible UI using modern web standards. 
+
+![](/content/images/2017/10/screenshot1.png)
+
+The above image is the updated landing page for account/role selection.
+
+![](/content/images/2017/10/screenshot2.png)
+
+The above image is the updated Migration Dashboard.
+
+This new interface provides a more clear user experience and paves the way for future functionality driven by customer feedback!
+
+###### C2S Service / Service Features
+
+In Combine 3.5 we have significantly improved the fidelity of our C2S Service and Service Features simulation. This includes further adjustments to EC2 to lock down EC2 service features not available in C2S, as well as new restrictions for ELB, RDS, CloudWatch, CloudTrail, Config, and Kinesis. 
+
+The Enterprise role for the AWS Config service was ported to Combine from C2S enabling Combine customers to test AWS Config workloads.
+
+Updates to Enterprise roles were made including removing some restrictions for Marketplace, Trusted Advisor, KMS, EMR, Kinesis, and Redshift.
+
+These changes to our service and service feature modeling improve the fidelity of the Combine simulation and increase the speed at which migration issues can be detected, while reducing the number of false positives.
+
+###### Internal Improvements
+
+Several internal changes where made to PKI infrastructure to better model the PKI infrastructure used by the customer agencies. This should simplify testing particularly for CAP integration scenarios.
+
+Several internal changes were also made to server infrastructure to increase the stability of the TAP server. This will also prevent private IP address reassignments which invalidate PKI certificate aliases.
+
+#### Introducing Harvest
+
+Last but not least, Sequoia is pleased to announce the release of Sequoia Harvest! Built on the same C2S emulating technology as Combine, Harvest is tailored for use in custom software development and DevOps workloads.
+
+![](/content/images/2017/10/combine_3_5_screenshot_3.png)
+
+Harvest is proud to offer pre-installed software from our partner network (which includes Telos, NVidia, and evident.io) in the same C2S simulating environment that powers Combine. 
+
+![](/content/images/2017/10/combine_3_5_screenshot_4.png)
+
+This allows our customers to do custom low-to-high software development against a C2S simulation with the added benefits of consolidated billing for partner software. 
+
+Harvest is *the* solution for unclassified, low-to-high development workloads.
+
+#### Roadmap
+
+Moving into next year we are excited about the growth opportunities for Combine and Harvest, and helping our customers on their C2S migration journey!
+
+Our next major goal is building a similarly high quality simulation environment for the upcoming SC2S region to serve customers who want to migrate to that space.
+
+Our development roadmap for Combine and Harvest includes an improved Migration Dashboard (sorting, filtering, and smart analytics that offer solutions for common problems), self service options for TAP role and TAP user creation, and other great improvements!
+
+For more information on Combine please visit [www.sequoiacombine.com](http://www.sequoiacombine.com).
+
+For other consulting needs or to enlist Sequoia as a partner in migrating your software to C2S please contact us [www.sequoiainc.com](https://www.sequoiainc.com).

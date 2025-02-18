@@ -1,0 +1,177 @@
+###Introduction
+
+It has been one of my goals for a while now to learn Google Go. Advertised as a modern replacement for C, it is marketed as having both high performance and a simple, strong design. As my professional life is mostly consumed by (overly?) complex languages, frameworks, and packages, the chance to use something that is as simple and direct as Go is advertised is a refreshing prospect.
+
+Go fills an interesting niche. It is a functional, statically typed, compiled language, and eschews the additional complexity of object orientation, the implicitness (and often confusion) of dynamically typed languages, and the performance cost of runtime interpretation.
+
+Its primary distinction is its claim that it is built for parallelism. Certainly a worthy priority for the multi-processor, multi-core, distributed processing, big data world we find ourselves in. Whether it lives up to that claim is something I want to experiment with a future blog post. For now, I want to get started with Go and get a taste for how the language feels!
+
+My first impression is that Go is not really the kind of language I will use to do web development or user applications, but it seems to be a solid choice for either embedded applications where a low overheard is valued, or high performance applications where "on the metal" performance is desirable.
+
+Whatever the case may be, I got a new Raspberry Pi 2 for my birthday and choose a foray into Google Go as a way of breaking it in!
+
+For this blog I was show how to setup Go on the Raspberry Pi, then walk through a Go example only slightly more complex than Hello World. In future blog posts I want to expand on the syntax and paradigms of Go, but for now, let's get started with the basics.
+
+###Raspberry Pi Setup
+
+Go does not have any prebuilt binaries for Raspberry Pi (that I could find) so you will need to compile it from source.
+
+First install mercurial and some compiler related packages to your Raspberry Pi.
+
+```
+sudo apt-get install -y mercurial
+sudo apt-get install -y mercurial gcc
+sudo apt-get install -y mercurial libc6-dev
+```
+
+
+Once these tools are available, you can check out the Go sources:
+
+```
+cd
+mkdir go
+cd go
+hg clone -u default https://code.google.com/p/go .
+```
+
+Go provides a handy script to build and test it completely from source:
+
+```
+./all.bash
+```
+
+
+*NOTE: I am running this on a Raspberry Pi 2 with the memory split giving only 16 MB to the graphics card. This maximizes the memory available for the build process. If you have an older Pi and/or a higher memory split you may encounter errors.*
+
+This process takes a **long time** but when it is done you should see:
+
+```
+ALL TESTS PASSED
+```
+
+To put Go on your command line path edit your `~/.bashrc` file and add this line:
+
+```
+export PATH=$PATH:/home/pi/go/bin
+```
+
+Log out and then log back into your Pi and you can test the command line path by type this:
+
+```
+go version
+```
+
+You should see the command successfully complete! Congratulations! You have Go installed on your Pi!
+
+###First Go Program
+
+I wanted to do something just slightly more complex than Hello World, so I settled on an Interactive Hello World! (I know... Wow! Right?)
+
+Go has a very interesting take on packages and how those packages integrate into Go itself. It is documented at length [here](https://golang.org/doc/code.html#PackagePaths) and although I do not have the space to go into it fully in this blog it makes for an interesting read!
+
+For simple learning purposes, you can use the `main` package and a `main()` method similar to what you may be familiar with in other languages.
+
+```
+package main
+```
+
+Go provides several system libraries which can be imported into your file. While Go allows one import per line, Go convention is to use a simple import command with a parameter for each import:
+
+```
+import (
+    "strings"
+    "bufio"
+    "fmt"
+    "os"
+)
+```
+
+The `main()` method will be run by default if this file is run.
+
+```
+func main() {
+    ...
+}
+```
+
+Go has a `Print` function as one would expect:
+
+```
+fmt.Print("Who are you? : ")
+```
+
+It also has functions to read from the command line:
+
+```
+reader := bufio.NewReader(os.Stdin)
+text, _ := reader.ReadString('\n')
+```
+
+*NOTE: Go is not object oriented so these are all method calls.*
+
+*NOTE: Go allows multiple returns from a single method (how cool is that?!?), which is what you see in the call to `ReadString()`.*
+
+In Go the `:=` operator acts as variable declaration, implicit type setter, and value setter all in one step. So the second line above is equivalent to this:
+
+```
+var text, error = reader.ReadString('\n');
+```
+
+Something important to note is that if you declare a variable and never reference it, Go will note compile. (Which is hard core...) If you intend to ignore one or more return values, you can use `_` to indicate this (as in our above example).
+
+I discovered that the `ReadString()` method returns the terminating character (a newline in our case) so we need to trim that off:
+
+```
+text = strings.TrimSpace(text)
+```
+
+*NOTE: I used `=` here because using `:=` would attempt to redeclare the variable which already exists and therefore give a compile error.*
+
+```
+fmt.Println("Hello, " + text + "!")
+```
+
+That brings the complete code listing to:
+
+```
+package main
+
+import (
+    "strings"
+    "bufio"
+    "fmt"
+    "os"
+)
+
+func main() {
+    fmt.Print("Who are you? : ")
+    reader := bufio.NewReader(os.Stdin)
+    text, _ := reader.ReadString('\n')
+    text = strings.TrimSpace(text)
+    fmt.Println("Hello, " + text + "!")
+}
+```
+
+Save the listing as `hello_world.go`.
+
+From the command line you can run this file directly:
+
+```
+go run hello_world.go
+```
+
+You can also build the file:
+
+```
+go run hello_world.go
+```
+
+Which will create a `hello_world` executable that can be invoked as you would expect:
+
+```
+./hello_world
+```
+
+Congratulations! You have entered the world of Go!
+
+Questions? Thoughts? Email me at smouring@sequoiainc.com!

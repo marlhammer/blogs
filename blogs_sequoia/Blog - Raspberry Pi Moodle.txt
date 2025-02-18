@@ -1,0 +1,145 @@
+<h2>Moodle on Pi</h2>
+
+<p>I recently volunteered to explore some open source education software for my Mom (a former high school teacher and current home school educator) called Moodle. Implemented in PHP, Moodle runs on the &quot;LAMP&quot; stack (Linux Apache MySQL PHP). I wanted to create a sandbox environment to play around in with the tool, and I immediately thought of my Raspberry Pi!</p>
+
+<p>The Raspberry Pi technically meets the hardware requirements for hosting Moodle, although it is not likely to scale very high. Still, it makes a perfect platform for experimenting with Moodle at home.</p>
+
+<p>Unfortunately, a Google search revealed that no one had deployed Moodle on the Raspberry Pi yet... (Or at least shared with the world if they did!) Sounds like a hole that should be filled!</p>
+
+<p>My first steps were to get the LAMP stack installed and situated on the Raspberry Pi.</p>
+
+<p><em>Note: Even if you are uninterested in Moodle, having LAMP on your Pi is very useful for other things.</em></p>
+
+<p>First, I recommend you update your <tt>apt-get</tt> repositories and upgrade your firmware if possible.</p>
+
+<div style="background:#eee; border:1px solid #ccc; padding:5px 10px"><tt>sudo apt-get update</tt></div>
+
+<div style="background:#eee; border:1px solid #ccc; padding:5px 10px"><tt>sudo apt-get upgrade</tt></div>
+
+<p>That will put you in a good place for the rest of the software you will install.</p>
+
+<h2>Apache</h2>
+
+<p>Apache is a web server that is capable of serving static and dynamic files from your Pi over HTTP. Installing it is relatively simple:</p>
+
+<div style="background:#eee; border:1px solid #ccc; padding:5px 10px"><tt>sudo apt-get install apache2</tt></div>
+
+<p>That should be all that is needed. Once that completes succesfully you should have Apache installed on your Pi. To test this, run:</p>
+
+<div style="background:#eee; border:1px solid #ccc; padding:5px 10px"><tt>sudo service apache2 restart</tt></div>
+
+<p>Then browse to:</p>
+
+<div style="background:#eee; border:1px solid #ccc; padding:5px 10px">http://&lt;IP Address of Rasspberry Pi&gt;/</div>
+
+<p><em>Note: If you need help setting a static IP for your Raspberry Pi that is accessible to other computers on your WIFI network, you can refer to my <a href="http://blogs.sequoiainc.com/blogs/raspberry-pi-wifi-adapter-with-static-ip">other blog on the subject</a> to get you started.</em></p>
+
+<p><em>Note: Apache is a complex and powerful tool. This blog is describing how to setup your Pi as a LAMP server for the purposing of in home sandboxing only. Using your Pi in a production environment is not recommended without considerably more thought about configuration.</em></p>
+
+<p>You should see an Apache page that says &quot;It Works!&quot; meaning you succeeded!</p>
+
+<h2>MySQL</h2>
+
+<p>MySQL is the data store part of the LAMP stack. Like Apache, the installation of MySQL is relatively straightforward.</p>
+
+<div style="background:#eee;border:1px solid #ccc;padding:5px 10px;"><tt>sudo apt-get install mysql-server mysql-client</tt></div>
+
+<p>During the installation, it will prompt you to set a <tt>root</tt> password. Please do so and make a note of it.</p>
+
+<p>Once the installation is complete you can verify it succeeded by running:</p>
+
+<div style="background:#eee; border:1px solid #ccc; padding:5px 10px"><tt>mysql -u root -p</tt></div>
+
+<p>It will prompt you for the <tt>root</tt> password. If you then are given a <tt>mysql&gt;</tt> prompt, the installation has succeeded! Type <tt>exit;</tt> to leave the prompt.</p>
+
+<p>On to the next step!</p>
+
+<h2>PHP</h2>
+
+<p>PHP is the engine that runs the code that Moodle is implemented in. Moodle requires PHP itself, and a number of additional integration points.</p>
+
+<div style="background:#eee; border:1px solid #ccc; padding:5px 10px"><tt>sudo apt-get install php5<br />
+sudo apt-get install php5-mysql<br />
+sudo apt-get install libapache2-mod-php5</tt></div>
+
+<p>Executing these will install PHP and the integration points for MySQL and Apache.</p>
+
+<p>Through trial and error I discovered the Moodle also needs the following PHP modules:</p>
+
+<div style="background:#eee; border:1px solid #ccc; padding:5px 10px"><tt>sudo apt-get install php5-curl<br />
+sudo apt-get install php5-gd</tt></div>
+
+<p>To verify the successful completion of PHP, execute this command:</p>
+
+<div style="background:#eee; border:1px solid #ccc; padding:5px 10px"><tt>php --help</tt></div>
+
+<p>If you see the command usage printed for PHP then you have at least a warm fuzzy that PHP is working!</p>
+
+<h2>Moodle</h2>
+
+<p>At this point we have a full LAMP stack on our Pi, capable of running running any PHP web application.</p>
+
+<p><em>Note: If that is as far as your interest goes, then you are all set! Happy coding! However, if you want to play with Moodle itself, then continue reading!</em></p>
+
+<p>To install Moodle, we need to get either a prepackaged distribution or the source code itself. Given the nature of PHP, I opted to just pull all the source code.</p>
+
+<div style="background:#eee; border:1px solid #ccc; padding:5px 10px"><tt>mkdir /var/www/moodle<br />
+cd /var/www/moodle<br />
+git clone -b MOODLE_26_STABLE git://git.moodle.org/moodle.git .</tt></div>
+
+<p><em>Note: In order to serve up the Moodle, Apache needs it to be in a configured document root. I just put Moodle directly in Apache&#39;s default directory. I have not done enough LAMP work to know if this is common practice or not. But for purposes of creating a sandbox, this is more than fine.</em></p>
+
+<p>Moodle needs several things setup in order to run. First of all, it needs a database setup in MySQL. Run:</p>
+
+<div style="background:#eee; border:1px solid #ccc; padding:5px 10px"><tt>mysql -u root -p</tt></div>
+
+<p>Once more, and enter the root password to log into the MySQL terminal. You will first want to create a empty database for Moodle.</p>
+
+<div style="background:#eee; border:1px solid #ccc; padding:5px 10px"><tt>CREATE DATABSE moodle DEFAULT CHARACTER SET utf8 COLLATE utf8_unicode_ci;</tt></div>
+
+<p>Then create a database user with access to the moodle database:</p>
+
+<div style="background:#eee; border:1px solid #ccc; padding:5px 10px"><tt>GRANT SELECT,INSERT,UPDATE,DELETE,CREATE,CREATE TEMPORARY TABLES,DROP,INDEX,ALTER ON moodle.* TO moodleuser@localhost IDENTIFIED BY &#39;moodlepassword&#39;;</tt></div>
+
+<p><em>Note: Replace <tt>moodleuser </tt>and <tt>moodlepassword</tt> with values of your choosing.</em></p>
+
+<p>With your database properly set up, the second thing you need to do is create a cache directory for Moodle to user.</p>
+
+<div style="background:#eee; border:1px solid #ccc; padding:5px 10px"><tt>sudo mkdir /moodledata<br />
+sudo chown pi:pi /moodledata</tt></div>
+
+<p>That is all the set up you need! Now you can proceed with the actual Moodle install.</p>
+
+<p>Moodle provides a web installer (truthfully... its more of a &quot;configurator&quot; instead of an installer) but I opted for the CLI version instead.</p>
+
+<div style="background:#eee; border:1px solid #ccc; padding:5px 10px"><tt>cd /var/www/moodle/admin/cli<br />
+sudo php install.php</tt></div>
+
+<p>The install script first asks for a number of pieces of information. Some of these are straight forward (language to use, database user name and password, etc.), but some are less than intuitive. The ones that tripped me up:</p>
+
+<ul>
+    <li>Web Address - They want you to specify the exact path that you will use to access Moodle. If you deployed Moodle to apache in its own directory this should be: <tt>http://&lt;IP ADDRESS&gt;/moodle</tt>. Where &lt;IP ADDRESS&gt; is the static IP of your Raspberry Pi.</li>
+    <li>Data Directory - The cache directory you created above. It can be really particular about the permissions for this directory, hence why I created a directory at the root level.</li>
+    <li>Full Site Name / Short Name - Both of these values are for GUI display only. They are simply the values that should go in the banners of your Moodle instance. (A little documentation from Moodle in the installer would have been nice I might add!)</li>
+</ul>
+
+<p><em>Note: If you need to terminate the installer prematurely, be warned that it will not restart easily. You need to delete the <tt>/var/www/moodle/config.php</tt> file that was created first. Try to avoid this if possible!</em></p>
+
+<p>Once you have been prompted for all the fields, the installer will setup the database.</p>
+
+<p><em>Note: This can take a long long time. I promise, your Raspberry Pi is not hung. It took mine over 3 hours to complete this phase!</em></p>
+
+<p>If that installer completes successfully you should be done! Congratulations!</p>
+
+<p>Browse to <tt>http://&lt;IP ADDRESS&gt;/moodle</tt> and you should be greeted by the Moodle home page!</p>
+
+<p>I am still playing around with Moodle, but a few quick tips to get you started:</p>
+
+<ul>
+    <li>Log in as the <tt>admin </tt>user (the installer lets you select admin user name and password).</li>
+    <li>Set your email in your Profile page. Moodle does not seem to want you to continue until you set this.</li>
+</ul>
+
+<p>As admin you will be able to create a course, modify system settings, and so forth.</p>
+
+<p>Questions? Comments? Email me at: smouring@sequoiainc.com!</p>

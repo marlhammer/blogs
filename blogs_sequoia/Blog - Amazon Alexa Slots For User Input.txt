@@ -1,0 +1,207 @@
+#### Introduction
+
+In a [prior blog post](https://blogs.sequoiainc.com/amazon-alexa-writing-my-first-skill/) I walked you through creating a simple Alexa Skill. That skill was entirely self contained. Other than responding to specific utterances to launch specific intents, it did not accept any user input. 
+
+Today I want to walk you through an Alexa Skill that accepts user input via *slots*.
+
+#### What Is A Slot?
+
+A slot is essentially a placeholder variable that is embedded in the utterance that activates the skill. When the user speaks the utterance, the value that they speak for the slot is parsed by Amazon's Alexa infrastructure and passed to your skill as a variable.
+
+Let's take an example. Let's say you are writing a skill to control the color of the lights in your house. You want the user to be able to invoke your skill with an utterance but specify the color that they want in that utterance.
+
+You could create an utterance / intent pair for each color:
+
+```
+Utterance: Alexa ask skill to change the lights to blue
+Intent: BlueIntent
+
+Utterance: Alexa ask skill to change the lights to red
+Intent: RedIntent
+
+Utterance: Alexa ask skill to change the lights to green
+Intent: GreenIntent
+```
+
+This would work, but for most cases would quickly become tedious and in other cases (such as infinite series like numbers) completely impossible.
+
+So instead you can embedded a *slot* in the utterance like this:
+
+```
+Utterance: Alexa ask skill to change the lights to {color}
+Intent: ColorIntent
+```
+
+This allows a single utterance / intent pair to handle all the possible colors you would like to set the lights too.
+
+With this conceptual understanding, let's dive into an example.
+
+##### Defining Slots
+
+Slots are defined in your intents and are referenced in your utterances. 
+
+*For this blog we will be using a modified copy of a skill I published called Hazmate. Hazmate accepts a four digit UN hazmat code and responds with the material designated by that code. (For example if you see a truck with a diamond shaped sign that says 1203 that means it is carrying gasoline.)*
+
+Here is an example of an intent definition that uses a slot:
+
+```
+"intents": [
+  {
+    "intent": "LookupCodeIntent"
+    "slots": [
+      {
+        "name": "code",
+        "type": "AMAZON.NUMBER"
+      }
+    ]
+  }
+]
+```
+
+Notice that slots have a `type` defined. There are several standard types [provided by Amazon](https://developer.amazon.com/docs/custom-skills/slot-type-reference.html) such as `AMAZON.NUMBER` used above. This determines how the utterance is parsed by Amazon's Alexa infrastructure and what type of value is passed to your skill.
+
+*Note: You can also create your own custom slot types with your own set of values an definitions. When I write a skill that uses one I will turn it into another blog post!*
+
+With the slot defined in the intent, you must then reference it in the utterance. For example:
+
+```
+LookupCodeIntent what is {code}
+LookupCodeIntent what is code {code}
+LookupCodeIntent what does {code} mean
+LookupCodeIntent what does code {code} mean
+LookupCodeIntent lookup {code}
+LookupCodeIntent lookup code {code}
+LookupCodeIntent tell me what {code} is
+LookupCodeIntent tell me what code {code} is
+LookupCodeIntent tell me what {code} means
+LookupCodeIntent tell me what code {code} means
+```
+
+Wherever `{code}` is used in the utterance, the Alexa will allow a user to speak a number. For example:
+
+```
+Alexa, ask Hazmate, what is 1203
+Alexa, ask Hazmate, lookup code 1075
+Alexa, ask Hazmate, tell me what 450 means
+```
+
+That number will be parsed, validated, and then sent to your skill.
+
+#### Using Slots
+
+Now that we can define slots in our skill definition, let's see how we access them from within the code. Let's start with an abbreviated listing of the Hazmate source code.
+
+```
+'use strict';
+
+var Alexa = require('alexa-sdk');
+
+var APP_ID = "<omitted>";
+
+var codes = {
+    // Significantly abbreviated as there are roughly 3000 codes total.
+    "0333":"Fireworks",
+    "1046":"Helium, compressed",
+    "1050":"Hydrogen chloride, anhydrous",
+    "1075":"Petroleum gases, liquefied or Liquefied petroleum gas",
+    "1203":"Gasoline or petrol or motor"
+};
+
+exports.handler = function(event, context, callback) {
+    var alexa = Alexa.handler(event, context);
+    alexa.APP_ID = APP_ID;
+    alexa.registerHandlers(handlers);
+    alexa.execute();
+};
+
+var handlers = {
+    'LaunchRequest': function () {
+        this.emit('AMAZON.HelpIntent');
+    },
+    'LookupCodeIntent': function () {
+        var code = this.event.request.intent.slots.code.value;
+        var error = '';
+        if (!code) {
+            error = "I did not hear what code you wanted me to identify.";
+            this.emit(':tellWithCard', error, "Hazmate", error);
+            return;
+        }
+        if (isNaN(code)) {
+            error = "I did not understand what code you wanted me to identify.";
+            this.emit(':tellWithCard', error, "Hazmate", error);
+            return;
+        }
+    if (code < 1 || code > 3518) {
+            error = "Please ask for a code between one and three thousand five hundred and eighteen.";
+            this.emit(':tellWithCard', error, "Hazmate", error);
+            return;
+    }
+    code = ("0000" + code).substr(-4,4)
+
+    var code_data = codes[code];
+
+    var speech = "";
+
+        if (!code_data) {
+            speech = "Code " + code + " does not exist.";
+        } else {
+            speech = "Code " + code + " is for " + code_data;
+        }
+
+        this.emit(':tellWithCard', speech, "Hazmate", speech);
+    },
+    'AMAZON.HelpIntent': function () {
+        this.emit(':ask', "You can say, what is code 1203, or, tell me what code 1050 is?", "What can I help you with?");
+    },
+    'AMAZON.StopIntent': function () {
+        this.emit(':tell', "OK!");
+    },
+    'AMAZON.CancelIntent': function () {
+        this.emit(':tell', "OK!");
+    }
+};
+
+```
+
+As you can see from above, the slot values are stored in `event.request.intent.slots data` structure. They are accessed by name:
+
+```
+var code = this.event.request.intent.slots.code.value;
+```
+
+#### Data Validation
+
+It is important to note that in many cases you still need to perform data validation on the slot value passed to your skill. If the user garbles the value when they speak the utterance or say something that is not recognized by the slot `type` your intent might still be activated with a null or incorrect value. Hence the following data validation checks:
+
+```
+if (!code) {
+    error = "I did not hear what code you wanted me to identify.";
+    this.emit(':tellWithCard', error, "Hazmate", error);
+    return;
+}
+if (isNaN(code)) {
+    error = "I did not understand what code you wanted me to identify.";
+    this.emit(':tellWithCard', error, "Hazmate", error);
+    return;
+}
+```
+
+*Note: Performing this kind of data validation is necessary if you want to get your skill certified and listed in the Alexa Skill marketplace.*
+
+In our case, since we are interested in UN hazmat codes, we do further validation to make sure the number given is within the correct range:
+
+```
+if (code < 1 || code > 3518) {
+    error = "Please ask for a code between one and three thousand five hundred and eighteen.";
+    this.emit(':tellWithCard', error, "Hazmate", error);
+    return;
+}
+```
+
+That is all you need to know to accept user input in your Alexa skills!
+
+#### Conclusion
+
+Hopefully this blog has given you a clear understanding of how to include user input into your Alexa Skills! 
+
+Questions? Comments? Corrections? Email me at smouring@sequoiainc.com!

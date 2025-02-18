@@ -1,0 +1,87 @@
+Even though I am blessed with a house that has Ethernet cables running to wall jacks on every floor... I still often find that I want to put a Raspberry Pi somewhere where a Ethernet jack is _not_. And since I have a hard time convincing my wife that running my 50 foot Ethernet cable around the house is good decor, I have started using WiFi adapters.
+
+WiFi adapters and the Rasberry Pi have had a rocky past. Not all WiFi adapters are compatible with the Raspberry Pi due to architecture limitations and some WiFi adapters draw too much power overloading the Pi's USB ports. Before buying an adapter you should research it to verify that it is compatible with your Pi.
+
+The adapter I choose was the [Wi-Pi](https://www.amazon.com/gp/product/B00BDW6D7I/ref=as_li_tl?ie=UTF8&camp=1789&creative=9325&creativeASIN=B00BDW6D7I&linkCode=as2&tag=smouring-20&linkId=1e733f221e31419b19bad0b7d2eace29). It was designed specifically for the Raspberry Pi and from my limited tests has really good reception given its size.
+
+There are two goals for this blog: (1) show you how to set up the WiFi adapter using a static IP. and (2) allow the WiFi adapter to automatically connect from the command line without having to boot into a GUI. For more information on why you might want to set up a static IP and how to do it for Ethernet, please see my [other blog](/raspberry-pi-host-your-own-git-repository/) on the subject.
+
+Setting up the WiFi adapter requires two steps. First you need to edit your `/etc/network/interfaces` file (do not forget to `sudo`). By default you should see something about like this:
+
+```
+auto lo
+iface lo inet loopback
+iface eth0 inet dhcp
+iface default inet dhcp
+```
+
+_Note: Some newer versions of Raspbian come preconfigured with some support for WiFi adapters, so your `interfaces` file might have already have additional an entry for `wlan0` below `eth0`. If that is the case, backup up your `interfaces` file and remove any other entries before proceeding._
+
+If you have not already setup your `eth0` connection with a static IP you will want to do so. Your `interfaces` file will then look something like this:
+
+```
+auto lo
+iface lo inet loopback
+iface eth0 inet static
+address <YOUR IP ADDRESS>
+netmask 255.255.255.0
+gateway <YOUR GATEWAY, typically 192.168.1.1>
+iface default inet dhcp
+```
+
+Then you will need to add an entry for your WiFi adapter. To do this, we are going to add a layer of indirection. The security settings for the WiFi connection are defined in a seperate file called `wpa_supplicant.conf`. Our `interfaces` file will reference that file to provide the WiFi adapter with the correct SSID and password to make the connection.
+
+Add the following to your `interfaces` file below the `eth0` definition:
+
+```
+allow-hotplug wlan0
+iface wlan0 inet manual
+wpa-roam /etc/wpa_supplicant/wpa_supplicant.conf
+iface home inet static
+address <YOUR IP ADDRESS>
+netmask 255.255.255.0
+gateway <YOUR GATEWAY, typically 192.168.1.1>
+````
+
+Note the reference to `home` in the `iface home inet static` line in the above configuration. The name `home` is defined in the `wpa_supplicant.conf` file.
+
+All the information about how to connect to the desired WiFi network is in the `/etc/wpa_supplicant/wpa_supplicant.conf` file. The latest versions of Raspbian come with a default already. If you do not have a default, then create a new one. Either way the first two lines of the file should be:
+
+```
+ctrl_interface=DIR=/var/run/wpa_supplicant GROUP=netdev
+update_config=1
+```
+
+You will then want to add the following below those two lines:
+
+```
+network={
+  id_str="home"
+  ssid="<YOUR SSID>"
+  scan_ssid=1
+  psk="<YOUR PASSWORD>"
+}
+```
+
+_Note: The `id_str="home"` defines the name that was used in the `interfaces` file to attach the static IP address._
+
+The `wpa_supplicant.conf` file can also accept several other security related fields which you may want to set depending on your network setup:
+
+```
+# Protocol: RSN for WPA2 or WPA for WPA1
+proto=RSN
+# Key Management: WPA-PSK or WPA-EAP
+key_mgmt=WPA-PSK
+# Pairwise: CCMP for WPA2 or TKIP for WPA1
+pairwise=CCMP
+# Authorization: OPEN (most common), SHARED or LEAP
+auth_alg=OPEN
+```
+
+The above are the settings that worked for my network (I am running WPA2), but the adapter also worked just fine without  setting any of then. (Which means it either defaults to WPA2 or has some form of autodetection.)
+
+Make those changes and reboot your Pi and you should be good to go!
+
+The setup I have described should also work fine for either Ethernet or WiFi, so you can swap the two connection methods in and out without editing your `interfaces` file.
+
+Questions? Comments? Email me at: smouring@sequoiainc.com!

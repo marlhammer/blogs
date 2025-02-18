@@ -1,0 +1,213 @@
+##### Introduction
+
+On my current project we have been gradually shifting our development to a DevOps model. While I strongly support this in theory, I realized that in practice, I was procrastinating the adoption of several DevOps tools including Puppet.
+
+I realized that, while I understood Puppet at a high level, I had not fully grokked Puppet. It was still murky and confusing in my mind. Lacking a clear path to implementing made it easy to postpone until "next sprint".
+
+I knew the premise of what it did (automating the configuration of your infrastructure) but whenever I thought about trying to work with it I got lost in the Module directories, Manifest files, and a clear lack of understanding how all this configuration I was writing would be applied, automatically, to the servers I was using.
+
+I decided a day of reckoning was in order, so I took off work for a training day, went to our corporate office and dove head first into Puppet.
+
+After untangling the interactions between resources, classes, and nodes, understanding how manifests and modules interact, and grasping how Puppet determines what configuration goes with what node, I am now ready to use Puppet on my project and share what I have learned with others!
+
+##### What Is Puppet?
+
+This blog presumes a basic understanding of what Puppet is and that you are (at least somewhat) convinced that you should use it. With that in mind it is still useful to have a summary of the key points to build on that in later sections!
+
+Puppet automates the configuration of your infrastructure. You define the configuration in a scripting language and then define which servers should receive that which configuration. Puppet handles interpreting the script and effecting changes on the servers when needed.
+
+Puppet is *declarative* which means that instead of telling Puppet what steps to take to configure a server, you tell it how you want the servers to be, and let Puppet figure out how to get there.
+
+Its the difference between saying "change the sudoers file to give User X sudo privileges" and "User X should have sudo".
+
+Puppet is typically run in a master/agent architecture. There is one server called the Puppet Master that holds all the configuration. Each server that needs to be managed by Puppet has a Puppet Agent installed on it.
+
+The Puppet Agent and Puppet Master communicate by generating a certificate that is signed by the Puppet Master's certificate authority. That certificate uniquely identifies the Agent through a "node name" and enables secure communication between the Agent and the Puppet Master.
+
+The Puppet Agent runs on a regular interval and checks in with the Puppet Master to verify that it is in the correct state. If it is not (in Puppet parlance this is referred to as "configuration drift") the Puppet Agent changes the state of the server to match the correct state as given by the Puppet Master.
+
+As mentioned above, each server that is running the Puppet Agent has a "node name" that determines what set of configuration (called a "catalog") it will get from the Puppet Master. The node name is typically the DNS name of the server although it can be manually assigned.
+
+With all that in mind, lets understand the basic concepts and terminology of Puppet!
+
+For this blog we will cover all the building clocks of how to defining configuration using Puppet's scripting language. In the next blog we will discuss how to organize and package this configuration into files (called "manifests") and packages (called "modules").
+
+##### Resources
+
+The basic building block of configuration for Puppet is the *Resource*. A Resource defines a single concrete element of configuration. This could be that a specific user exists, or that a specific file exists, or that a Linux package is installed/uninstalled.
+
+Resources are defined as follows:
+
+```
+TYPE { TITLE ->
+    ATTRIBUTE,
+    ATTRIBUTE,
+    ATTRIBUTE,
+    ...
+}
+```
+
+Where each `ATTRIBUTE` is defined as a key-value pair: `KEY:VALUE` such as `home:'/home/foo'`.
+
+*NOTE: Idiomatic Puppet includes a comma at the end of every attribute, including the **last one**.*
+
+Each Resource has a Title (or a Name) that must be unique per Node. (We will explain the concept of a Node later.)
+
+Each Resource has a Resource Type. Puppet defines basic Resource Types and you can also create your own types if needed.
+
+Here is an example Resource:
+
+```
+user { 'jbauer':
+    ensure      => present,
+    home        => '/home/jbauer',
+    shell       => '/bin/bash',
+}
+```
+
+A Resource's attributes define it and how it will be applied to servers. In this case, the User Resource we defined has attributes that specify whether or not the user should be present or absent on the system, the home directory to use, and the default shell. (There are many additional attributes other than the ones listed here.)
+
+##### Resource Types
+
+Each Resource has a Type that defines what attributes it has, and how Puppet implements it under the covers. Puppet comes with many Resource Types already defined. Some examples:
+
+```
+File
+Package
+Service
+User
+Group
+```
+
+It is important to understand that Puppet treat a Resource Types as a way of looking at the configuration of a server. A Resource Type is a lens by which Puppet can examine a server, not just a category of the configuration you have written.
+
+To illustrate this, you can ask Puppet to list Resources of a given Type on a server:
+
+```
+puppet resource <RESOURCE_TYPE>
+```
+
+So for example:
+
+```
+puppet resource user
+```
+
+When you run the above command, Puppet will not list just the User Resources you configured. It will list *every user* on the system, formatted as a Puppet Resource.
+
+We you configure Puppet with a User Resource, you a saying "of all the User Resources on this server, this one should be present as well".
+
+##### Classes
+
+A Class is the next level of organization for configuration in Puppet. A Class is a group of Resources that belong together conceptually. It is a way of bundling Resources together into units of configuration that fulfill a single role
+
+For example, you might want to configure a Java web server by adding a Tomcat user, installing Tomcat, and starting the Tomcat service. All three of those elements of configuration are separate resources, but they are all related and serve a common goal. They can be bundled into a single class that can be handle as a single unit of configuration.
+
+Classes are defined as follows:
+
+```
+class <CLASS_NAME> {
+    RESOURCE
+    RESOURCE
+}
+```
+
+So for example:
+
+```
+class users {
+    user { 'jbauer':
+        ensure      => present,
+        home        => '/home/jbauer',
+        shell       => '/bin/bash',
+    }
+
+    user { 'cobrian':
+        ensure      => present,
+        home        => '/home/cobrian',
+        shell       => '/bin/bash',
+    }
+
+    ...
+}
+```
+
+*NOTE: It is out of scope for this blog, but classes can inherit from one another allowing you to avoid duplication if you have several related classes.*
+
+*NOTE: It is also out of scope for this blog, but classes can define variables that allow you to tweak class behavior for different environments, server types, etc.*
+
+The above is called a class *definition*. I have defined the class, but if that was all I did, it would not be used by Puppet or applied to a server.
+
+To indicate that you want to apply a class to a server, you need to *declare* it. Declaring a class tells Puppet "take this class that I have defined and apply it to this server."
+
+You declare a class using like this:
+
+```
+include <CLASS_NAME>
+```
+
+So for example:
+
+```
+include users
+```
+
+##### Nodes
+
+A Node is the final level of organization for configuration in Puppet. A Node gathers together class declarations and any stand alone resource declarations into a bundle of configuration that should be applied to a specific server.
+
+Nodes are defined as follows:
+
+```
+node '<NAME>' {
+    include <CLASS>
+    include <CLASS>
+    include <CLASS>
+    ...
+
+    <RESOURCE>
+    ...
+}
+```
+
+So for example:
+
+```
+node 'web01.example.com' {
+    include tomcat
+    include users
+
+    file { '/opt/tomcat/conf/application.conf' ->
+        ...
+    }
+}
+```
+
+The node name is important. When Puppet runs, it matches the node name given by the Puppet Agent to the node names defined in its configuration and applies the configuration based on which nodes match.
+
+A node can be defined as a "default" node, in which case it will always be applied to all servers. For example:
+
+```
+node default {
+    include security
+    ...
+}
+```
+
+Assigning and managing node names is probably the most difficult part of managing Puppet, especially in environments such as AWS where you have servers that appear and disappear based on behaviors like autoscaling.
+
+##### Putting Them All Together
+
+So we have learned about three concepts: Resources, Classes, and Nodes.
+
+Resources are specific elements of configuration. They are defined by their Type and their Attributes.
+
+Classes are groups of related Resources. They are defined, but then must be declared to be applied to a server.
+
+Nodes are a bundle of Class declarations and Resource declarations that are applied to a specific server based on matching the node names.
+
+So far we have skirted several key concepts of Puppet. How are these resources, classes, and nodes stored? How are they organized? How does Puppet know where to start when determining what nodes exist and which do not?
+
+To understand the next steps, we need to cover manifests, modules and touch on environments in [part two](https://blogs.sequoiainc.com/puppet-101-part-2/) of this blog series.
+
+Questions? Comments? Email me at: smouring@sequoiainc.com!

@@ -1,0 +1,118 @@
+<p>I have always found Bitcoin to be intriguing... Yeah, I know it is probably not cost effective... Yeah, I know the currency crashes every couple of months... Yeah, I know it will probably be illegalized soon... But somehow, using compute cycles to generate currency out of thin air just pushes my geek buttons! And when I realized I could use a Raspberry Pi to run my miner, the deal was sealed.</p>
+
+<p>I took the plunge a few weeks ago and purchased an ASIC miner. (For those unfamiliar with the history of mining Bitcoin, the difficulty of solving each block increases every other week or so. Early on you could mine with just your computer&#39;s CPU. But fairly quickly the difficulty increased to the point where a single CPU was no longer effective, so miners switched to using the highly parallel GPU cores found in modern graphics cards.</p>
+
+<p>Now, the difficulty has increased to the point that even GPU mining is obsolete and miners have turned to using custom ASIC (Application Specific Integrated Circuit) chips that implement the necessary hashing algorithms in hardware giving it the extreme speeds need to achieve profitable hashing rates. &nbsp;</p>
+
+<p>For my experimentation with Bitcoin I settled on a second generation, USB powered ASIC miner, the AntMiner U1. (Selling for about $60 on <a href="http://www.amazon.com/Bitmain-AntMiner-U1-1-6GH-Bitcoin/dp/B00HNYDU4Y/ref=sr_1_2">Amazon</a>.) Rated for a very respectable 1.6 GHps (with overclocking to up to 2 GHps and beyond) it is a very reasonable way to get involved in Bitcoin mining. At least at a hobby level.</p>
+
+<p>Full disclaimer. Mining Bitcoin is not likely to ever be profitable without some significant investment in hardware or a significant rise in the value of Bitcoin. I undertake this effort as a hobby, not as a alternate source of income. If you want to project the profitability of mining Bitcoin with a specific hardware setup, you should consulte <a href="http://www.coinish.com/calc/">this site</a>. It most cases, you will be very forunate if you reach a break even point before the difficulty catches up with you. That, however, does nothing to detract from the coolness of being a Bitcoin miner. So press on!</p>
+
+<p>According to the specifications, my miner draws a full 500 milliamps from the USB port. Since I wanted to use my Raspberry Pi as the controller, this presents a problem since the Raspbery Pi only can deliver about 100 milliamps combined across both USB ports. This necessitated a search for a powered USB hub which could not only deliver 500 milliamps to each port, but that was also compatible with the Raspberry Pi!</p>
+
+<p>After a long search, I settled on this <a href="http://www.amazon.com/D-Link-Hi-Speed-7-Port-Powered-DUB-H7/dp/B00008VFAF/ref=sr_1_1">one from Amazon</a>. To confirm it worked, I first logged into my Pi and ran this command:</p>
+
+<div style="background:#eee; border:1px solid #ccc; padding:5px 10px"><tt>lsusb</tt></div>
+
+<p>Which listed the following devices:</p>
+
+<div style="background:#eee; border:1px solid #ccc; padding:5px 10px"><tt>Bus 001 Device 002: ID 0424:9512 Standard Microsystems Corp.<br />
+Bus 001 Device 001: ID 1d6b:0002 Linux Foundation 2.0 root hub<br />
+Bus 001 Device 003: ID 0424:ec00 Standard Microsystems Corp.</tt></div>
+
+<p>These are to be expected. There is a onboard hub (Device 001) which controls two ports (Device 002 and Device 003).</p>
+
+<p>I then powered up the hub, plugged in my miner, and plugged the whole assembly into my Pi. Running <tt>lsusb </tt>again, I see the additional entries:</p>
+
+<div style="background:#eee; border:1px solid #ccc; padding:5px 10px"><tt>Bus 001 Device 002: ID 0424:9512 Standard Microsystems Corp.<br />
+Bus 001 Device 001: ID 1d6b:0002 Linux Foundation 2.0 root hub<br />
+Bus 001 Device 008: ID 0835:8502 Action Star Enterprise Co., Ltd<br />
+Bus 001 Device 003: ID 0424:ec00 Standard Microsystems Corp.<br />
+Bus 001 Device 004: ID 0835:8500 Action Star Enterprise Co., Ltd<br />
+Bus 001 Device 005: ID 0835:8501 Action Star Enterprise Co., Ltd<br />
+Bus 001 Device 006: ID 10c4:ea60 Cygnal Integrated Products, Inc. CP210x UART Bridge / myAVR mySmartUSB light<br />
+Bus 001 Device 007: ID 0835:8500 Action Star Enterprise Co., Ltd</tt></div>
+
+<p>Now I am ready to set up the miner!</p>
+
+<p>Mining on anything less than an industrial scale requires participation in a mining pool. A pool harnesses the hashing power of all its members to collectively solve a block. Once solved, the block reward is distributed to all the members proportionate to their respective contributions. A pool usually charges a small fee to support the infrastructure needed to run the pool, but that is usually only 2% or 3% of the final reward.</p>
+
+<p>To start mining with your ASIC miner and Raspberry Pi you need to join a pool and create a &quot;worker&quot; which is an account to which your mining will submit solutions. I recommend <a href="https://mining.bitcoin.cz/">Slush&#39;s Pool</a>.</p>
+
+<p>Most mining setups utilize an open source program called cgminer. Used as a controller for a wide array of different hardware, cgminer handles communication of work units and solutions to and from a pool&#39;s servers.</p>
+
+<p>The Antminer U1 uses a custom version of cgminer with drivers for it preinstalled. (If you are using a different miner, your mileage may vary.) To get started I created a separate directory in my home directory to hold all things bitcoin:</p>
+
+<div style="background:#eee; border:1px solid #ccc; padding:5px 10px"><tt>mkdir bitcoin<br />
+cd bitcoin</tt></div>
+
+<p>The software is available on github:</p>
+
+<div style="background:#eee; border:1px solid #ccc; padding:5px 10px"><tt>git clone https://github.com/AdvancedStyle/cgminer</tt></div>
+
+<div style="background:#eee; border:1px solid #ccc; padding:5px 10px"><tt>cd cgminer</tt></div>
+
+<p>The software unfortunately requires a lengthy build and configuration process that has additional software dependencies. Some of these I found online, and some I found by trial and error. Below is a list of all the ones I needed, running the latest Raspberry Pi firmware, to save you the trouble. Once again, your mileage may vary.</p>
+
+<div style="background:#eee; border:1px solid #ccc; padding:5px 10px"><tt>sudo apt-get install libusb-1.0<br />
+sudo apt-get install libudev-dev<br />
+sudo apt-get install dh-autoreconf<br />
+sudo apt-get install libcurl4-openssl-dev</tt></div>
+
+<p>Once all these are successfully downloaded and installed, you can start the cgminer build process. This takes a long time. Easily an hour. Do not be worried if it seems to hang.</p>
+
+<div style="background:#eee; border:1px solid #ccc; padding:5px 10px"><tt>./autogen.sh</tt></div>
+
+<p>Once that completes, then you need to enable support for your particular device:</p>
+
+<div style="background:#eee; border:1px solid #ccc; padding:5px 10px"><tt>./configure &ndash;enable-bmsc</tt></div>
+
+<p>Then one final build step:</p>
+
+<div style="background:#eee; border:1px solid #ccc; padding:5px 10px"><tt>make -j 6</tt></div>
+
+<p>One final tweak recommended for Raspberry Pi users:</p>
+
+<div style="background:#eee; border:1px solid #ccc; padding:5px 10px"><tt>sudo vi /boot/cmdline.txt</tt></div>
+
+<p>Then add the following to the end of the first line:</p>
+
+<div style="background:#eee; border:1px solid #ccc; padding:5px 10px"><tt>slub_debug=FP</tt></div>
+
+<p>According to online wisdom, this improves the stability of the miner. I cannot vouch for that one way or another, but just included it here for completeness.</p>
+
+<p>You now have an executable capable of running cgminer and controlling your Antminer U1! The command to run the miner is as follows:</p>
+
+<div style="background:#eee; border:1px solid #ccc; padding:5px 10px"><tt>./cgminer --bmsc-options 115200:20 -o http://api.bitcoin.cz:8332 -u &lt;YOUR WORKER USERNAME&gt; -p &lt;YOUR WORKER PASSWORD&gt; --bmsc-freq 0781</tt></div>
+
+<p>The bmsc-options are mysterious, but necessary for this miner. I did not ask any questions.</p>
+
+<p>The <tt>-o</tt> parameter is the URL of your mining pool. The <tt>-u</tt> and <tt>-p</tt> options are for your worker username and password respectively. Finally the <tt>--bmsc-freq</tt> option is a custom parameter to the Antminer U1 that sets the clock speed.</p>
+
+<div style="background:#eee; border:1px solid #ccc; padding:5px 10px"><tt>0781 runs at the standard 1.6 Ghps</tt></div>
+
+<div style="background:#eee; border:1px solid #ccc; padding:5px 10px"><tt>0881 = 1.8 Ghps</tt></div>
+
+<div style="background:#eee; border:1px solid #ccc; padding:5px 10px"><tt>0981 = 2 Ghps</tt></div>
+
+<p>According to the documentation and online wisdom, 2 Ghps is the most you should run the Antminer U1 without significant external cooling. The clock settings go higher (all the way up to 4 GHps according to some reports) but require significant external cooling and run the risk of causing faults on the chip or even permenant damage.&nbsp; I personally run my at 0881 which is a solid compromise between performance and stability. (I also added a CPU style heatsink to my Antminer U1 for good measure.)</p>
+
+<p>If you are intent on overclocking you should investigate getting a heatsink (with the proper thermal tape or thermal adhesive!), and a fan. If you are going to push the envelope, you should look at creating a wind tunnel to focus your fan on the chip, or try something more exotic (like a mineral oil bath). Sound off in the comments with any cooling rigs you experiment with!</p>
+
+<p>Running the command as describe above will run it interactively in the terminal. Since you are not likely to want to stay logged into your Pi while you mine, I would suggest the following changes to the command:</p>
+
+<div style="background:#eee; border:1px solid #ccc; padding:5px 10px"><tt>nohup ./cgminer --bmsc-options 115200:20 -o http://api.bitcoin.cz:8332 -u &lt;YOUR WORKER USERNAME&gt; -p &lt;YOUR WORKER PASSWORD&gt; --bmsc-freq 0781 &amp;</tt></div>
+
+<p>The <tt>nohup </tt>causes the program to persist in executing even if the originating user logs out. The trailing <tt>&amp;</tt> causes the program to execute in the background, freeing your terminal session to do other things (such as log out.)</p>
+
+<p>I have been mining intermittently for about three weeks at 1.8 Ghps and have earned 5/100s of a Bitcoin or, at current prices, about $4 worth. Considering the $80 of hardware I have acquired, I may never reach the break even point. But that is beside the point...</p>
+
+<p>A few final tips I have learned:</p>
+
+<p>(1) Do not attach a Raspberry Pi camera to your Raspberry Pi while mining. The extra power draw and / or something with the camera drivers makes the miner much less stable and induces frequent crashes.</p>
+
+<p>(2) If possible, I recommend buying a microSD card for your Raspberry Pi and using an adapter such as <a href="http://au.element14.com/adafruit-industries/966/low-profile-microsd-card-adapter/dp/2215045">this one</a>. Over time the pins on the Pi&#39;s card reader become worn down causing it to occasionally crash the OS due to a bad read. This wrecks havoc with your efforts to keep a good mining streak going. The microSD adapter I listed above does not have recessed pins like all SD cards have and therefore hold a good connection for a long time.</p>
+
+<p>(3) Ensure your power cord is firmly attached and not worn out. I had a number of unexplained network crashes due to a loose power cord. While not enough power loss to cause the Pi to shut off, it would periodically kill my network connection, and disrupt my miner.</p>
+
+<p>That is it for now! Questions? Comments? Email me at smouring@sequoiainc.com!</p>

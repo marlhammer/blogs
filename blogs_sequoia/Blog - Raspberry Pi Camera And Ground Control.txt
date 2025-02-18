@@ -1,0 +1,106 @@
+<p>In the midst of researching Google Go (which is something I really want to make some time to learn!) I stumbled across an excellent little project called <a href="https://github.com/jondot/groundcontrol">Ground Control</a>. Designed for the Raspberry Pi, Ground Control is a framework for reporting statistics from and running commands&nbsp; on your Raspberry Pi. Statistics can be any value that changes over time. The reference implementation is a statistic tracking the CPU Temperature of your Pi. Ground Control can emit statistics to a simple web interface accessible directly from off the Pi or to one of several commercial statistic capturing services such as <a href="http://librato.com">Librato</a> or <a href="http://tempo-db.com">TempoDB</a>.</p>
+
+<p>Ground Control also provides the ability to run commands on your Pi. By supplying the proper configuration, Ground Control will present buttons on its web interface allowing you to either execute a command, or even toggle two commands (to start and stop a service for example.)</p>
+
+<p>The goal of this blog will be to show you how to set up Ground Control on your Pi and use it in conjunction with a Raspberry Pi camera to take photos remotely .</p>
+
+<p>To get started with Ground Control you first need to download it. My preferred way of doing this is to download it directly onto the Pi. Create a directory on your Pi, and from within that directory execute this command:</p>
+
+<div style="background:#eee; border:1px solid #ccc; padding:5px 10px"><tt>wget http://jondot.github.io/groundcontrol/groundcontrol-0.0.1.tar.gz .</tt></div>
+
+<p>This will download Ground Control as a compressed TAR file. To extract the TAR, execute this command:</p>
+
+<div style="background:#eee; border:1px solid #ccc; padding:5px 10px"><tt>tar -xvf groundcontrol-0.0.1.tar.gz</tt></div>
+
+<p>Inside the directory you have just extracted, Ground Control has a sample configuration file (<tt>groundcontrol.json.sample</tt>) for your review. (The file is written in JSON. <a href="http://json.org/">Here is a description of JSON</a> if you are unfamiliar with it.)</p>
+
+<p>If you open this file you will see entries for host and port (where the web interface will run), configuration for Librato and TempoDB, and a sample on/off command for XMBC. You will want make a copy of this sample (calling your copy <tt>groundcontrol.json</tt>)&nbsp; and modify several parameters. For my project, I accepted most of the defaults, removed the configuration for Vibrato / TempoDB, and replcaed the sample XMBC command with one for my camera.</p>
+
+<p>Here is my configuration file:</p>
+
+<div style="background:#eee; border:1px solid #ccc; padding:5px 10px"><tt>{</tt></div>
+
+<div style="background:#eee; border:1px solid #ccc; padding:5px 10px"><tt>&nbsp; &quot;temperature&quot; : &quot;/sys/class/thermal/thermal_zone0/temp&quot;,</tt></div>
+
+<div style="background:#eee; border:1px solid #ccc; padding:5px 10px"><tt>&nbsp; &quot;port&quot;: 4571,</tt></div>
+
+<div style="background:#eee; border:1px solid #ccc; padding:5px 10px"><tt>&nbsp; &quot;host&quot;: &quot;0.0.0.0&quot;,</tt></div>
+
+<div style="background:#eee; border:1px solid #ccc; padding:5px 10px"><tt>&nbsp; &quot;stdout&quot; : false,</tt></div>
+
+<div style="background:#eee; border:1px solid #ccc; padding:5px 10px"><tt>&nbsp; &quot;interval&quot; : 30,</tt></div>
+
+<div style="background:#eee; border:1px solid #ccc; padding:5px 10px"><tt>&nbsp; &quot;history_interval&quot;: 60,<br />
+&nbsp; &quot;history_backlog&quot;: 20,</tt></div>
+
+<div style="background:#eee; border:1px solid #ccc; padding:5px 10px"><tt>&nbsp; &quot;controls&quot; : {<br />
+&nbsp;&nbsp;&nbsp; &quot;camera&quot;: {<br />
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; &quot;once&quot; : &quot;raspistill -t 10 -o /home/pi/`date +\&quot;%y%m%d%H%M%S\&quot;`.jpg&quot;<br />
+&nbsp;&nbsp;&nbsp; }<br />
+&nbsp; }</tt></div>
+
+<div style="background:#eee; border:1px solid #ccc; padding:5px 10px"><tt>}</tt></div>
+
+<p>&nbsp;</p>
+
+<p>Several things to note. First, my &quot;camera&quot; command has a &quot;once&quot; entry instead of &quot;on&quot; and &quot;off&quot; entries. This is provided by Ground Control for commands that do not have a &quot;on&quot; and &quot;off&quot; state and are simply executed once.</p>
+
+<p>Also note the command:</p>
+
+<div style="background:#eee; border:1px solid #ccc; padding:5px 10px"><tt>raspistill -t 10 -o /home/pi/`date +\&quot;%y%m%d%H%M%S\&quot;`.jpg</tt></div>
+
+<p>The call to <tt>raspistill</tt> invokes the camera. The <tt>-t</tt> parameter sets the delay in milliseconds before taking the picture (in my case I wanted the picture to take almost immediately.) The <tt>-o</tt> parameter specifies where to save the resulting JPG.</p>
+
+<p>The <tt>/home/pi/`date +\&quot;%y%m%d%H%M%S\&quot;`</tt> looks complicated but is actually quite simple. I am constructing a path to save the result JPG. The <tt>/home/pi</tt> are an absolute reference to the <tt>pi </tt>user&#39;s home so this command can be executed from any context. The <tt>`date ...`</tt> dynamically invokes the <tt>date</tt> command everytime the command is executed, creating a unique name for the file with the date / time so that each file does not overwrite the prior one. The <tt>+\&quot;%y%m%d%H%M%S\&quot;</tt> is just a properly escaped format string that specifies the format of the timestamp for the date command.</p>
+
+<p><em>Note: There are many other parameters that can be send to <tt>raspistill </tt>to control almost every aspect of the camera. I would recommend executed <tt>raspistill --help</tt> and reviewing the inline documentation.</em></p>
+
+<p>By running <tt>./groundcontrol -config groundcontrol.json</tt> you can validate that your configuration file is valid and that Ground Control starts correctly. Browse to <tt>http://&lt;IP ADDRESS OF PI&gt;:&lt;PORT&gt;</tt> and verify that the web interface loads correctly.</p>
+
+<p>&nbsp;</p>
+
+<p>Now that is all well and good, but as soon as I close Ground Control I will lose access to my metrics and remote picture taking capability! What I really want is to have Ground Control persist across restarts of my Raspberry Pi.</p>
+
+<p>Thankfully Ground Control provides an <tt>init</tt> script (found in <code>/&lt;GROUND CONTROL DIRECTORY&gt;/support/init.d/groundcontrol</code>) that can be installed in your <tt>init.d</tt> directory to have Linux start Ground Control each time it boots up. The provided init script expects the configuration and Ground Control executables to be in certain default locations, so you either need to copy them there or modify the locations in the provided <tt>init</tt> script.</p>
+
+<p>I choose the former, which I recommend for simplicity. Copy your configuration file to <tt>/etc/</tt> as follows:</p>
+
+<div style="background:#eee; border:1px solid #ccc; padding:5px 10px"><tt>sudo cp /&lt;PATH TO GROUNDCONTROL.JSON&gt;/ /etc/groundcontrol.json</tt></div>
+
+<p>Copy the executables to <tt>/opt/groundcontrol/</tt> as follows:</p>
+
+<div style="background:#eee; border:1px solid #ccc; padding:5px 10px"><tt>sudo mkdir /opt/groundcontrol</tt></div>
+
+<div style="background:#eee; border:1px solid #ccc; padding:5px 10px"><tt>sudo cp -r /&lt;PATH TO GROUND CONTROL DIRECTORY&gt;/ /opt/groundcontrol</tt></div>
+
+<p>Finally, copy the init script to /etc/init.d/ as follows:</p>
+
+<div style="background:#eee; border:1px solid #ccc; padding:5px 10px"><tt>sudo cp /opt/groundcontrol/support/init.d/groundcontrol /etc/init.d/groundcontrol</tt></div>
+
+<p>To verify this works, run:</p>
+
+<div style="background:#eee; border:1px solid #ccc; padding:5px 10px"><tt>/etc/init.d/groundcontrol start</tt></div>
+
+<p><em>Note: The first line of output may report a FAILURE (it was trying to shutdown Ground Control if it was running) but that is all right. It was just expected Ground Control to be already running.</em></p>
+
+<p>Browse to the web interface and verify that Ground Control is up and running. If it is not, double check your configuration file to verify that it is properly formatted JSON. (You may choose to use an <a href="http://jsonlint.com/">online validator</a> to be certain.) If it is up and running, then install it into your Pi&#39;s startup cycle as follows:</p>
+
+<div style="background:#eee; border:1px solid #ccc; padding:5px 10px"><tt>update-rc.d groundcontrol defaults</tt></div>
+
+<p>Reboot your Pi:</p>
+
+<div style="background:#eee; border:1px solid #ccc; padding:5px 10px"><tt>sudo reboot</tt></div>
+
+<p>Once your Pi has finished rebooting, double check that Ground Control is up and running by browsing to the web interface.</p>
+
+<p>&nbsp;</p>
+
+<p>Congratulations! You can now monitor your Pi&#39;s temperature (and any other metrics you choose to configure) as well as have remote access to your Pi&#39;s camera!</p>
+
+<p>&nbsp;</p>
+
+<p>Questions? Comments? Email me at: smouring@sequoiainc.com</p>
+
+<p>&nbsp;</p>
+
+<p>&nbsp;</p>

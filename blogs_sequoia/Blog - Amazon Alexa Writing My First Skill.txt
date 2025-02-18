@@ -1,0 +1,199 @@
+#### Introduction
+
+Since getting an Amazon Echo for father's day, Alexa has established herself in our life with remarkable alacrity. 
+
+She has finally enabled my wife to fully enjoy our music collection (since my ~~excessive~~ organization of our data unintentionally made it hard for her to search for what she wants). 
+
+My kids immediately accepted Alexa as a fixture of the household, asking her to tell them jokes, tell them stories, and even if she could "go to the store and buy them a puppy".
+
+I have now arranged for Alexa to control the lighting in the master bedroom. Most nights as we try to put our newborn to sleep there is a regular progression of "Alexa dim the bedroom lights to 50%", "Alexa dim the bedroom lights to 30%", "Alexa dim the bedroom lights to 10%", "Alexa turn off the bedroom lights"... 
+
+The next step in my Alexa journey was, naturally, to write my own Alexa Skill. So this weekend, I set aside some time to do that... And I was pleasantly surprised to find that it was both *remarkably* easy and really fun!
+
+There are essentially two components to an Alexa Skill: the definition and the implementation. To illustrate this, I will walk through one of the skills I wrote this weekend.
+
+I called this skill "Work Days" and it responds to several phrases (such as "how many work days are left in the year?"), by counting the number of work days remaining in the year, and reporting this number back to the user. (An important utility for a developer who is on yearly contracts!)
+
+So let's get started!
+
+#### Skill Definition
+
+To create an Alexa Skill you need to set up an account on the [Amazon Developer](https://developer.amazon.com/) site. 
+
+*NOTE: It is much easier to test your Alexa Skill if you use the account associated with your devices as your developer account. Otherwise you need to [share devices](https://developer.amazon.com/public/solutions/alexa/alexa-skills-kit/docs/testing-an-alexa-skill#h2_register) between your developer account and your regular account.*
+
+In the Amazon Developer site you will create an Alexa Skill entry (which is much like an "app store" listing). In this entry you will provide metadata about your skill, define the methods in your implementation ("intents") and specify what words or phrases should trigger those methods ("utterances").
+
+To get started, log into the Developer site, select the `Alexa` tab, and click `Get Started >` under the `Alexa Skills Kit` icon. 
+
+![Step 1](https://images.stephenmouring.name/blog/alexa_skill1.png)
+
+This will then start a wizard which walks you through the process of completing the entry. 
+
+![Step 2](https://images.stephenmouring.name/blog/alexa_skill2.png)
+
+The first step of the wizard is the `Skill Information` form. For a basic skill there are really only two things of interest here, the `Name` and the `Invocation Name`.
+
+The Name is what will be displayed in the Alexa Skill store. The Invocation Name is the key word that enables your skill when a user address Alexa.
+
+In our example, "How Many Work Days Left?" is our Name, and the phrase `work days` is our Invocation Name. Therefore our skill can be accessed by addressing Alexa like this: `"Alexa, ask work days ..."`
+
+The next step of the wizard is the `Interaction Model` form. Here is where you define your "intents" (which map to methods in your implementation) and "utterances" (which trigger your intents when spoken to Alexa).
+
+![Step 3](https://images.stephenmouring.name/blog/alexa_skill3.png)
+
+Intents are defined via JSON (see [documentation and schema](https://developer.amazon.com/public/solutions/alexa/alexa-skills-kit/docs/alexa-skills-kit-interaction-model-reference) here). Intents are like hooks or triggers that map an action in the skill to a block of implementing code.
+
+Here is the example JSON for the our skill:
+
+```
+{
+  "intents": [
+    {
+      "intent": "WorkDaysIntent"
+    },
+    {
+      "intent": "AMAZON.HelpIntent"
+    }
+  ]
+}
+```
+
+I have one primary intent: `WorkDaysIntent` that will handle the majority of the skill's work. I also implemented the built in `AMAZON.HelpIntent` to hook into the Alexa's help interface. We will see these intent names again when we provide the implementation for the skill in the next section.
+
+###### Utterances
+
+Utterances are the bread and butter of the user interaction. For each intent you can provide multiple sentences that are used to trigger the intent.
+
+![Step 4](https://images.stephenmouring.name/blog/alexa_skill4.png)
+
+The utterances defined for our skill are as follows:
+
+```
+WorkDaysIntent say how long does the work year lasts
+WorkDaysIntent say how many works days are left
+WorkDaysIntent say how many works days are left in the year
+WorkDaysIntent say how many works days are left this year
+WorkDaysIntent say how many works days are there
+WorkDaysIntent say how many works days are there left
+WorkDaysIntent say how many works days remain
+WorkDaysIntent say how much longer
+```
+
+*NOTE: Utterance can include "slots" which are essentially variables that can be included in the utterance to turn it into a template. For example if I wanted an utterance to include a number or a date, I could define a slot and reference it in the utterance. In a future blog post, I will demonstrate an Alexa Skill with slots.*
+
+Once a user speaks a sentence that matches one of your utterances, it will cause the corresponding intent to be invoked. The more utterances you provide for an intent, the more flexible and forgiving your skill will be to the user if they misspeak.
+
+We will take a quick pause from the Alexa Skill entry wizard, save our progress and shift to talk about implementation. When we have our implementation done, we will return to the wizard and finish our skill definition.
+
+Save your work thus far, and make a note of the `ID` value found on the top banner underneath you skill's name.
+
+#### Skill Implementation
+
+Skills are implemented via either an AWS Lambda function or through a custom web application. Since Lambda is considerably simpler, less expensive, more scalable, and generally more fun I opted for that route.
+
+I am using nodejs for this example and will be using the nodejs [Alexa SDK](https://github.com/alexa/alexa-skills-kit-sdk-for-nodejs).
+
+Log into your AWS account, and go to the `Lambda` page and click the `Create a Lambda function` button. (You may have to click `Get Started` if this is your first Lambda function).
+
+You will be prompted to select a blueprint. Since we are using nodejs, I recommend using the `alexa-skill-kit-sdk-factskill` template. This template automatically loads the nodejs Alexa SDK for you. 
+
+![Step 5](https://images.stephenmouring.name/blog/alexa_skill_aws1.png)
+
+*NOTE: If you choose `Blank Function` you will need to download the nodejs Alexa SDK and bundle it with your code as a zip file. I had trouble getting this to work from Windows due to issues with zip file paths. Probably user error, but proceed with caution.*
+
+Next you will need to set the trigger for your Lambda function to be  `Alexa Skills Kit`. 
+
+![Step 6](https://images.stephenmouring.name/blog/alexa_skill_aws2.png)
+
+Lastly, you will need to set a Name and Description for your function, select the latest nodejs Runtime, and paste in your implementation code.
+
+![Step 7](https://images.stephenmouring.name/blog/alexa_skill_aws3.png)
+
+Here is the code for the work days skill:
+
+```
+'use strict';
+
+var Alexa = require('alexa-sdk');
+
+var APP_ID = "<SKILL ID>";
+
+exports.handler = function(event, context, callback) {
+    var alexa = Alexa.handler(event, context);
+    alexa.APP_ID = APP_ID;
+    alexa.registerHandlers(handlers);
+    alexa.execute();
+};
+
+var handlers = {
+    'LaunchRequest': function () {
+        this.emit('WorkDaysIntent');
+    },
+    'WorkDaysIntent': function () {
+        var date = new Date();
+        var date_eoy = new Date(date.getFullYear(), 11, 31, 0, 0, 0, 0)
+        
+        var days = 0;
+
+        var i = date;
+        while (i <= date_eoy) {
+            if((i.getDay() !== 6) && (i.getDay() !== 0))
+                ++days;
+            i.setDate(i.getDate() + 1);
+        }
+        --days; // Excludes today.
+        
+        var speech = "You have " + days + " more work days this year";
+
+        this.emit(':tellWithCard', speech, "Work Days", speech);
+    },
+    'AMAZON.HelpIntent': function () {
+        this.emit(':ask', "You can say how many work days are left in the year or how much longer", "What can I help you with?");
+    }
+};
+```
+
+A couple things to note. First, notice that I provided my skill's ID in the `APP_ID` variable. This prevents other skills from invoking my Lambda function.
+
+Second, notice that each intent has a matching function mapped to it. These functions are invoked whenever a matching utterance for that intent is spoken. The Alexa SDK provides methods (such as `emit()` to handle responses).
+
+Once your Lambda function is created, save a copy of the Lambda function's ARN. 
+
+We will now return to the Amazon Developer site to finish filling out the skill entry.
+
+The next step in the wizard is `Configuration`. Here you have a choice to attach your skill to a Lambda function or a custom web application. Use the ARN of your Lambda function that you saved in the prior step.
+
+![Step 8](https://images.stephenmouring.name/blog/alexa_skill5.png)
+
+#### Testing
+
+The fourth step in the skill entry wizard is for `Testing`. Amazon provides a number of ways to test your Alexa Skill. I would recommend that you do two things.
+
+First, make sure that the skill is enabled for your account. This will allow *your* devices to use the skill without having to publish it to the marketplace.
+
+![Step 9](https://images.stephenmouring.name/blog/alexa_skill6.png)
+
+Secondly, you will want to use this page to generate a test event for your Lambda function. 
+
+![Step 10](https://images.stephenmouring.name/blog/alexa_skill7.png)
+
+You can type a sample utterance into the `Text` test section and it will generate a `Request` to your Lambda function and the `Response` it receives.
+
+You can use the request in the Lambda console (by opening up your Lambda function and clicking the `Test` button) to troubleshoot issues with your function. If you have any bugs, sending the test event from the Lambda function page will give you an error message whereas the Test page of the skill wizard will not.
+
+Once you are able to successfully test your skill via the `Text` test panel, you can try it on one of your own devices!
+
+Assuming your devices are attached to the same account you are using in the developer console, they should be automatically updated with the skill as you make changes to it. Just turn to your nearest Alexa and say:
+
+```
+"Alexa, ask work days, how many works days are left in the year?"
+```
+
+Congratulations! You have written your first Alexa Skill!
+
+#### Conclusion
+
+Best of luck to you as you teach your Alexa new skills!
+
+Questions? Comments? Email me at: smouring@sequoiainc.com!

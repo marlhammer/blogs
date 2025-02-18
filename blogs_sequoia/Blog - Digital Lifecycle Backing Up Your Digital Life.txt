@@ -1,0 +1,200 @@
+#### Introduction
+
+My life style is driven by my data. All of my work (programming, presentations, blogs...) is in a digital format. Most of my play is a digital format too (eBooks, music, film/tv shows, writing, 3D printing...) 
+
+The things in my life that are not digital almost always have a significant digital footprint (pictures/video of my family, financial records, files for my 3D printed rocket, the catalog of my NERF guns, the downloaded manuals for my LEGO sets...)
+
+Organizing, storing, and securing data has become my ~~clinically diagnosed obsession~~ "meta hobby" if you will. 
+
+The internet is filled advice for how to backup, tools to do the backups, and service providers who will take your money to do it for you. A comprehensive survey of the backup ecosystem is out of scope for a single blog post however, so in this post, I want to outline the *particular* path I have taken and discuss some specific tools that I have found to be helpful.
+
+#### Backup Strategy
+
+The best advice you can get on data backups is to "be redundant"! Digital data is surprisingly fragile. A few wrong clicks, a crashed hard drive, the wrong amount of electricity in the wrong place, an unusually active sun spot, and your data can be lost, corrupted, or inaccessible.
+
+Despite the promises of "the cloud" there is no, single, completely safe place to put your data that is immune to interference or destruction (or theft or intrusion in the case of private data). 
+
+Your best plan is to store multiple copies in multiple places and forms so that if one copy is compromised, it can be restored quickly from an intact source.
+
+This can become very confusing at first though if you do not exercise some discipline. This means you should *only change your data in one place*. You should have one central place that manages the "current" copy of your data. Every other copy should be a "read only" copy. You do not want to change data in multiple places because then you will not know where to look to find the latest version.
+
+###### Get Your Data Together
+
+The first step in backing up your digital life is an organizational one. You need to get your data together into one place. In my practice this is a single folder, under which I have an organizational scheme:
+
+```
+Data ->
+  Backups ->
+  Documents ->
+  Media - eBooks ->
+  Media - Audio ->
+  Media - Audiobooks ->
+  Media - Photography ->  
+  Media - Video ->
+  Projects ->
+```
+
+You can organize your data however you want to, the above scheme is just what works for me. But it is important to have it in one (or as few) place(s) as possible. 
+
+Every new bit of data you acquire should go into your repository. (For example, the text of this blog, once finished, will be saved to a file under `Projects` -> `Blog` -> `blogs_sequoia`.) Once it is in your repository you can think of it as "safe" as your backup system should ensure it is duplicated and replicated to all the places it needs to be. 
+
+###### Tiers To Avoid Tears
+
+Once your data is organized to the point that you know *what* you want to back up, you need to decided how many copies to make and where to put them. 
+
+There are a couple key principals here:
+
+* You need to make copies often (*how much data do you want to lose? that is how often you should backup...*)
+* You need to make multiple copies (*because one is a single point of failure*) 
+* You need to have **off site** copies (*because houses burn down, flood, or get tornado-ed from time to time*)
+
+I organize my backups into layers or tiers to help accomplish these goals
+Here are the backup tiers I use:
+
+```
+Primary Hard Disk (laptop)
+   -> Dropbox
+      -> Backup Hard Disks (on site, in fire proof safe)
+         -> Glacier
+```
+
+Each layer or tier is backed up at a different frequency, but I always backup each tier in descending order. So this means that I back up my Dropbox constantly. Then every month or so I backup my on site hard disks. Then every year I back up Glacier.
+
+###### Tier 1: Hard Drive
+
+All of my data is held on a large SSD in my laptop. Every file that I care about is somewhere in the `Data` folder of my laptop. 
+
+*(Now, this works because my wife is very patient and does not need to access our data very often! If you have more than one user editing your data, you will need to consider something else more central such as a NAS or a share drive. A topic for another day...)*
+
+This hard drive is my first tier. This is the master copy of my data. It is convenient because I always have a local copy of my data with me and I am not dependent on having an internet connection to access my data.
+
+After extensive research I chose the [1 TB Samsung 850 EVO](https://www.amazon.com/gp/product/B00OBRFFAS/ref=as_li_tl?ie=UTF8&camp=1789&creative=9325&creativeASIN=B00OBRFFAS&linkCode=as2&tag=smouring-20&linkId=1453f0076479f1768ef53482979218ad) as my primary hard drive. The Samsung 850 EVO and Samsung 850 Pro series of SSD drives boast the most durability and reliability of any SSD drive on the market. 
+
+Despite having been on the market for years the 850 series still consistently beats other SSD drives for reliability and value and remain the benchmark by which other SSD drives are measured. A great starting place in research SSD reliability is the famous [SSD torture test](http://techreport.com/review/27909/the-ssd-endurance-experiment-theyre-all-dead).
+
+With the 850 series, I wanted to have the very latest SSD controller (currently Samsung's MHX). That controller is found on the 850 EVO 1TB, 2TB, and 4TB models, and the 850 Pro 2TB, and 4TB models.
+
+No matter how reliable my SSD is though... My single first tier is ultimately not very safe. It is a single point of failure, and if this was my only copy of my data and my laptop was lost, stolen, fried, submerged, whatever, I lose all my data. If my SSD shorts out, I lose all my data. If I make the wrong set of keystrokes and delete that folder, I lose all my data.
+
+So I need to rely on an additional tier.
+
+###### Tier 2: Dropbox
+
+My second tier is [Dropbox](https://dropbox.com). I pay for Dropbox Pro which nets me enough storage to house all my current holdings. 
+
+Every time I change a file in my `Data` folder it is immediately synced with Dropbox. This satisfies two of the three principals listed above: (1) I am backing up constantly, and (2) I am backing up off site.
+
+The beauty of Dropbox is that there is almost no maintenance required. It syncs automatically and seamlessly. It has the added benefit of making it easy to move files from other sources (such as phones / tablets) without plugging in cables, and enables sharing files among friends and families trivial.
+
+###### Tier 3: External Hard Disks
+
+For some people two tiers might be sufficient (especially if their second tier is a cloud provider). There is, however, an extra paranoid side of me that likes to now that I have additional copies of my data, offline, and *under my own control*, without needing to pay a yearly or monthly fee. Hence I introduced a third tier: Backup Hard Drives.
+
+I bought three [particularly rugged external hard drives](https://www.amazon.com/gp/product/B005GHTEV8/ref=as_li_tl?ie=UTF8&camp=1789&creative=9325&creativeASIN=B005GHTEV8&linkCode=as2&tag=smouring-20&linkId=08f1a48d297f899e9959fa5b16018761) and store them in a plastic bag with [a dessicant](https://www.amazon.com/gp/product/B00J0J5ZFW/ref=as_li_tl?ie=UTF8&camp=1789&creative=9325&creativeASIN=B00J0J5ZFW&linkCode=as2&tag=smouring-20&linkId=07fe3c4d142521dbda5d4de6f97891a4) inside of a water and fire resistant safe (Sentry is my go to brand, but some research suggest First Alert is the [better choice](https://live.engadget.com/2017/07/16/the-best-fireproof-document-safe/). Every 60 to 90 days, I take these hard disks and clone my primary laptop hard drive onto them.
+
+There is an outstanding piece of software to do fast, seamless file synchronization: [AllWay Sync](https://allwaysync.com/). There is a free version, but I highly recommend buying the Pro version to support continued software development project! 
+
+AllWay Sync can do an "echo" synchronization where it takes a source folder and a destination folder, and makes the destination folder identical to the source. In this way you can replay any changed, deleted, or added files from your master copy to your backup copy with a push of a button.
+
+###### Tier 4: AWS Glacier
+
+At this point, I have a solution that is constantly backed up off site, and easily backed up on site. What else could I need?
+
+One more off site cloud backup of course!
+
+Admittedly this is a stretch even for my levels of ~~paranoia~~ concern. The thought behind putting a copy in Glacier was two fold: (1) catastrophe protection and (2) redundant off site protection.
+
+In the event of a catastrophe hitting the east coast, my data would be safe in a west coast AWS Glacier vault. Likewise, if Dropbox even had a significant failure or data corruption even themselves (and I somehow had a house fire on the same day), I would have an additional off site copy to restore from.
+
+Using Glacier is not for the faint of heart. I have a [blog on the topic here](https://blogs.sequoiainc.com/aws-backup-with-amazon-glacier/). I would just say that if you want to backup to Glacier I would highly recommend using the [FastGlacier](https://fastglacier.com/) tool. It is the easiest path and has an excellent "sync" option for you to update existing backups.
+
+###### Tier Summary
+
+So in summary, I have a master copy of my data on a reliable SSD that is *continually* backed up *off site* to Dropbox. Every two or three months, I backup to three identical hard drives on site in a secure place. Every six months I do a "disaster recovery" backup to AWS Glacier.
+
+#### Encryption Strategy
+
+One criticism of my backup strategy comes in my use of a paid cloud provider. Despite Dropbox's [excellent score](https://arstechnica.com/tech-policy/2017/07/comcast-att-whatsapp-all-score-low-on-new-who-has-your-back-list/) with respect to user privacy, I *am* trusting a third party with potentially sensitive personal data. For some people (ultimately including myself) this is not acceptable.
+
+To have true privacy you need to have "trust no one" encryption. In other words, your data must be encrypted on a platform that *you* control *before* it is transmitted to the cloud or a third party for storage. 
+
+Many cloud providers do a good job encrypting data *after* they receive it which protects it from any bad actors who penetrate the provider's defenses. But this does not stop the cloud provider themselves from decrypting your data.
+
+I have used two different solutions to mitigate this.
+
+###### SpiderOak
+
+A dramatic solution is to switch cloud providers completely. Dropbox is incredibly stable, fast, convenient, and widely supported. However, your files are not encrypted before they are sent there.
+
+[SpiderOak](https://spideroak.com/) is a cloud provider that supports trust no one encryption. Files are encrypted on your computer with your password / private key before they are sent to SpiderOak. At no time does SpiderOak handle your unencrypted data. This means that SpiderOak is unable to decrypt your data (because they do not have your password / private key) even if a third party orders them to. You remain in complete control of your data.
+
+Spider Oak has matured substantially in the last few years, and has a more or less seamless syncing feature now, which is comparable to Dropbox's. It is still not as well supported and has fewer sharing capabilities / integrations than Dropbox however.
+
+Still, if privacy is your driving concern, SpiderOak is your solution.
+
+###### VeraCrypt 
+
+I used SpiderOak for some time before deciding that I wanted the convenience and polish of Dropbox.
+
+Since Dropbox does not support trust no one encryption, anything that you want totally private has to be encrypted *before* it is sent to Dropbox. It is hard to practically encrypt all your data yourself... There are tools, but it also undermines some of the desired convenience of Dropbox (sharing, integrations with other apps, photo syncing, etc.)
+
+So you have to decide if you really need all your data encrypted or not.
+
+As a compromise, I encrypt my really sensitive data (health records, private projects, intellectual property, and so forth) and leave the remainder (music, family photos, and so on) unencrypted. This struck the right  balance of security and convenience *for me*. Your mileage my vary.
+
+My tool of choice for encryption is [VeraCrypt](https://veracrypt.codeplex.com/). VeraCrypt is the continuation of the original TrueCrypt project and is backwards compatible with TrueCrypt. (Side note, TrueCrypt was written by anonymous authors who later abandoned the project because they lost interest. The tool was valuable enough that several other companies forked it and maintained successors such as VeraCrypt.) TrueCrypt (and its successors) have gone through [multiple, independent security assessments](http://istruecryptauditedyet.com/) and is considered secure.
+
+I use the "file container" mode of VeraCrypt which creates a large encrypted file on your hard drive which can be "mounted" to your computer through the VeraCrypt program. Once mounted, a file container looks like a USB drive drive. It has a drive letter and you can copy / move files to it. Those files are seamlessly encrypted under the covers through VeraCrypt's operating system integrations. Once you are done with your file container you can "eject" it and all that remains is the large, encrypted file on your hard drive. 
+
+That encrypted file can be synced safely to a cloud provider with the knowledge that is encrypted and inaccessible to that provider.
+
+###### Parting Thought
+
+One final thought as you build your backup solution... I highly recommend that you put together a digital "end of life" instructional document. (This is not the same thing as digital directions in your will or estate, but you should do that too!) In the event that you are incapacitated, your loved ones will need to access your data. If you have an impenetrably secure or highly technical backup solution, you will need to give them access.
+
+My strategy was to prepare a document that clearly explained where all the data was, in order of most recent backup, and had clear, *tested* instructions on how to access it. This includes not just passwords, but PIN to access my phone for 2 factor authentication, 2 factor authentication override codes (for Dropbox), and any instructions on how to unencrypt data.
+
+I store this document in a water and fire proof safe alongside my will and other important documents. 
+
+It is an unpleasant thing to consider, but think how much worse it would be if your loved ones were forever locked out of your digital life.  
+
+#### Extracting Data
+
+Now that I have outlined a clear data backup strategy, and mechanisms for ensuring the privacy of that data even in the hands of third parties, I want to talk about extracting data. Our digital lives generate tremendous amounts of data, and as an ~~obsessive compulsive~~ data collector I have tried to find ways to extract that data, incorporate it into my data holdings so it can be ~~controlled~~ safely backed up.
+
+I expect this section of the blog to be a living document that will grow as I discover and add additional data sources. For now, here are some assorted suggestions and tools.
+
+###### Google Takeout
+
+Like many people in the world, I rely on Google for my email, calendar, TODO list, driving directions, and a multitude of other things.
+
+Google has a *beautiful* interface for requesting an archive of *all* the data they store for you so that you can independently back it up.
+
+From GMail click on your profile on the upper right, select `My Account` then `Control your data`. From there you can click `Create archive` and select exactly what data (any or all) that you want to archive!
+
+A few hours (or days) later, Google will notify you that your archive is ready for download!
+
+I backup all my Google accounts annually. This is primarily for the sake of keeping an offline copy of email and calendar. I exclude some things that are already backed up (Google Music, Google Books, etc.) to keep the archive size reasonable.
+
+Despite this, the archives can grow quite large (5 GB one year for me) so make sure you have enough storage on your backup devices to accommodate this.
+
+###### Google Takeout: Email Management
+
+One way to shrink the size of your Google Takeout archive is to purge your email. You can do something simple (like delete email older than 3 years after each annual back up) or something amazing and wonderful like [Mailstrom](https://mailstrom.co/referral/DYBVX). I cannot recommend Mailstrom enough! The ability to purge emails by sending (goodbye junk mail!) or by size (no large attachments after they have been backed up once!) is incredibly useful.
+
+###### DvdFab
+
+I love finding ways of converting physical goods into digital form. It keeps my house cleaner and feeds my inner minimalist desires.
+
+I am currently in the midst of converting all my DVDs to digital form and storing them on a private media server ([Plex](https://www.plex.tv/)). My tool of choice, after having used several (Handbrake, Audials, etc.), is definitely [DvdFab](http://www.dvdfab.cn/). 
+
+DvdFab is extremely reliable (Handbrake would choke on many DVDs) and fast (Audials required you to playback the DVD to record it, DvdFab uses NVIDIA CUDA cores to accelerate if your computer has them and can capture a full DVD in 15 minutes) and it has made this project very easy!
+
+###### Kindle eBooks
+
+I love Kindle eBooks. I hate DRM. I use [calibre](https://calibre-ebook.com/) and [this tool](https://apprenticealf.wordpress.com/) to create non-DRM local copies of my Kindle eBooks and then back those up independently.
+
+#### Conclusion
+
+There you have it, a summary of my backup strategy, how I ensure privacy in the cloud, and an assortment of tips/tricks for backing up specific kinds of data! Email me at smouring@sequoiainc.com with questions or comments!
+

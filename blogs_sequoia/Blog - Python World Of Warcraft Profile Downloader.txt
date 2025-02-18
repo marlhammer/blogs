@@ -1,0 +1,128 @@
+<p>When it comes to my&nbsp;lifestyle (and many other things) I definitely prefer the minimalist approach. I like consolidation. I delight in eliminating unnecessary things we no longer need. I think of it as refactoring life... And I truly do love <a href="http://blogs.sequoiainc.com/blogs/refactoring-change-your-project-s-culture">refactoring</a>.&nbsp;If my wife and I did not have our two (soon to be three) wonderful&nbsp;children, I imagine we would be traveling the world <a href="http://www.artofmanliness.com/2015/01/21/how-to-travel-around-the-world-with-just-a-20lb-backpack/">with just a backpack</a>...</p>
+
+<p>But there is one area where I am definitely not a minimalist... <em>data</em>. I am a data hoarder. I collect data from anywhere and everywhere. I&nbsp;download or digitize every document or set of&nbsp;paperwork I come into contact with in my professional, personal, and family life.&nbsp;All my hobbies have one or more dedicated folders where related digital material is carefully filed. I find ways to rip or&nbsp;exfiltrate and backup all my media (from ebooks and music to our DVD collection). It is probably a medically certifiable condition at this point...</p>
+
+<p>But hey...&nbsp;Bytes are tiny and they pack well,,, And it could be worse. Google &quot;hoarders&quot; and you will see what I mean...</p>
+
+<p>I play <a href="http://us.battle.net/wow/en/">World Of Warcraft</a> casually and my data hoarding tendency discovered that WoW maintains a web service from which you can download a JSON snapshot of your character, along with their associated achievements, pets, mounts, and so on... It was not long before I had thrown together some crude shell scripts using some macros to <tt>wget</tt> down all the JSON data my little digital hoarding heart could want... It was slow, and tedious (I had to generate a separate API call for each character achievement which required writing a macro to mass produce the <tt>wget</tt> calls needed) but it got the data I wanted.</p>
+
+<p>However, also In my spare time, I have been trying to learn Python... Mostly by tackling&nbsp;<a href="http://blogs.sequoiainc.com/blogs/python-web-crawling-with-scrapy">small</a>&nbsp;<a href="http://blogs.sequoiainc.com/blogs/python-web-crawling-imdb-with-scrapy-neo4j-and-aws">projects</a> that have some Python angle to them...&nbsp;<span style="line-height:1.6em">I recently realized that the WoW API was a perfect opportunity to use Python to write a more robust profile&nbsp;</span>downloader<span style="line-height:1.6em">! It would require file I/O, HTTP calls, and </span>JSON<span style="line-height:1.6em"> parsing, all of which would help improve my Python skills, and it would make updating my downloaded character profiles&nbsp;much easier. (Need. More. </span>Dataz<span style="line-height:1.6em">!)</span></p>
+
+<p>Since file I/O, HTTP, and JSON are all core skills, I thought it would be useful to put this project up on a blog for anyone else who is starting to learn Python to reference. (And also have the WoW API script available in its entirety to feed the addiction of fellow data hoarders!)</p>
+
+<p>So, let&#39;s begin!</p>
+
+<p><em>NOTE: To give you some context, there is an&nbsp;<a href="http://blizzard.github.io/api-wow-docs/">API reference</a>&nbsp;for the WoW API. In general, it is very simple REST interface and is very easy to follow.</em></p>
+
+<p>&nbsp;</p>
+
+<p><strong>Setup</strong></p>
+
+<p>I am running this on a Raspberry Pi... (Why? Because Raspberry Pi&#39;s are awesome. And because Python works really well on Linux, but my laptop is Windows. Comments about the superiority of the Mac can be emailed <a href="mailto:dontwanttohearit@os_agnostic.com">here</a>.)</p>
+
+<p>The script I wrote uses the Python library&nbsp;<tt>httplib2</tt> to make HTTP requests. This is installed using Python&#39;s package manager <tt>pip</tt> which does not come natively on the Raspberry Pi. To install <tt>pip</tt> you must:</p>
+
+<div style="background:#eee; border:1px solid #ccc; padding:5px 10px"><tt>sudo apt-get install python-pip</tt></div>
+
+<p>&nbsp;</p>
+
+<p>Once pip is installed and work, you can install <tt>httplib2</tt>:</p>
+
+<div style="background:#eee; border:1px solid #ccc; padding:5px 10px"><tt>sudo pip install httplib2</tt></div>
+
+<p>&nbsp;</p>
+
+<p>The WoW API has several different objects it can return but there is one core object for the character that is most of what I am interested in. That interface&nbsp;takes several parameters that govern what information about the character is returned. (More information&nbsp;<a href="http://blizzard.github.io/api-wow-docs/">here</a>.) Character achievements (awarded for performing specific tasks in game) are handled through their own API however, so the character object returns a list of achievement id values that must be queried&nbsp;in the API for additional information.</p>
+
+<p>At a high level, the script I wrote will query for the character, parse and output that response, and then loop through all the achievement id values and query for each achievement, parsing and outputting each of those responses.&nbsp;</p>
+
+<p>Let&#39;s take it from the top!</p>
+
+<p>&nbsp;</p>
+
+<p><strong>Code</strong></p>
+
+<p><em>NOTE: The complete script&nbsp;can be downloaded <a href="https://gist.github.com/marlhammer/4e6789078ace54692562#file-wow_profiler_downloader-py">from GitHub</a>.</em></p>
+
+<p>We will be using <tt>httplib2</tt> and the native <tt>json</tt> module, so first we import these:</p>
+
+<div style="background:#eee; border:1px solid #ccc; padding:5px 10px"><tt>import httplib2<br />
+import json</tt></div>
+
+<p>&nbsp;</p>
+
+<p>I wanted to make this script flexible, so I setup a parameter for the character name and server so it is not hard coded to just my character... (It would have been better to prompt for each value from the console... That exercise is left to the readers.):</p>
+
+<div style="background:#eee; border:1px solid #ccc; padding:5px 10px"><tt># Parameters:<br />
+#<br />
+character_name = &quot;Marlhammer&quot;</tt></div>
+
+<div style="background:#eee; border:1px solid #ccc; padding:5px 10px"><tt>server = &quot;Khadgar&quot;</tt></div>
+
+<p>&nbsp;</p>
+
+<p>Now we need to initiate an HTTP GET request to get the character json. We build a URL:</p>
+
+<div style="background:#eee; border:1px solid #ccc; padding:5px 10px"><tt># Script:<br />
+#<br />
+base_url=&quot;http://us.battle.net/api/wow/character/&quot;<br />
+base_url+=server<br />
+base_url+=&quot;/&quot;<br />
+base_url+=character_name<br />
+base_url+=&quot;?fields=achievements,appearance,mounts,pets,professions,progression,pvp,quests,reputation,stats,talents,titles&quot;</tt></div>
+
+<p>&nbsp;</p>
+
+<p>&nbsp;</p>
+
+<p>Then use <tt>httplib2</tt> to make the GET request:</p>
+
+<div style="background:#eee; border:1px solid #ccc; padding:5px 10px"><tt>resp, content = httplib2.Http().request(base_url)</tt></div>
+
+<p>&nbsp;</p>
+
+<p>I want to output the JSON to a file and&nbsp;Python provides a simple interface for File I/O (as opposed to say, Java):</p>
+
+<div style="background:#eee; border:1px solid #ccc; padding:5px 10px"><tt>output = open(character_name + &#39;.json&#39;, &#39;w&#39;)</tt></div>
+
+<p>&nbsp;</p>
+
+<p>Using the output file handle, I then parse the character JSON and write a copy to the file:</p>
+
+<div style="background:#eee; border:1px solid #ccc; padding:5px 10px"><tt>character_json = json.loads(content)</tt></div>
+
+<div style="background:#eee; border:1px solid #ccc; padding:5px 10px"><tt>json.dump(character_json, output, sort_keys=True, indent=4, separators=(&#39;,&#39;, &#39;: &#39;))<br />
+output.write(&quot;\n&quot;)</tt></div>
+
+<p>&nbsp;</p>
+
+<p><em>NOTE: The <tt>loads()</tt> method means &quot;load string&quot;. There is also a <tt>load()</tt> method for reading JSON from a file.</em></p>
+
+<p><em>NOTE: The parameters to <tt>dump()</tt> are used for &quot;pretty printing&quot;... The json attributes are output as sorted, and indented to make them human readable.</em></p>
+
+<p>As mentioned above, the character achievements are not included in the character JSON&nbsp;in their entirety, and are instead, referenced by an array of ids. If you examine the character JSON you will see there is an <tt>achievements&nbsp;</tt>map that includes information about achievement progress, including an array called <tt>achievementsCompleted</tt>.</p>
+
+<p>The next step is to loop over those ids and make a query for each id:</p>
+
+<div style="background:#eee; border:1px solid #ccc; padding:5px 10px"><tt>for achievement in character_json[&quot;achievements&quot;][&quot;achievementsCompleted&quot;]:<br />
+&nbsp; &nbsp; resp, content = httplib2.Http().request(&quot;http://us.battle.net/api/wow/achievement/&quot;+str(achievement))<br />
+&nbsp; &nbsp; achievement_json = json.loads(content)<br />
+&nbsp; &nbsp; json.dump(achievement_json, output, sort_keys=True, indent=4, separators=(&#39;,&#39;, &#39;: &#39;))<br />
+&nbsp; &nbsp; output.write(&quot;\n&quot;)<br />
+&nbsp; &nbsp; print str(achievement)</tt></div>
+
+<p>&nbsp;</p>
+
+<p>This portion of the script follows the same pattern as before. A request is made, the result is parsed into JSON, and then it is written to the file. The achievement id is printed to the console as a status indicator.</p>
+
+<p>And then the script ends:</p>
+
+<div style="background:#eee; border:1px solid #ccc; padding:5px 10px"><tt>print &quot;\nCompleted!\n&quot;</tt></div>
+
+<p>&nbsp;</p>
+
+<p>That is all there is to it!&nbsp;</p>
+
+<p>&nbsp;</p>
+
+<p>Questions? Comments? Email me at: smouring@sequoiainc.com</p>

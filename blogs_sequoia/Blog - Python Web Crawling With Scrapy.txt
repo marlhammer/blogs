@@ -1,0 +1,216 @@
+<h3>Introduction</h3>
+
+<p>A long time ago... In my parent&#39;s house far far away... I used to collect <a href="http://en.wikipedia.org/wiki/Star_Wars_Customizable_Card_Game">Star Wars CCG</a> cards... My card collection was a fun part of my childhood that was, during some unfortunate purge of my stuff in my teenage years, lost forever.</p>
+
+<p>A few weeks ago, my wife and I rewatched the Star Wars trilogy for the first time in over 10 years. My interest in Star Wars reawakened, I decided to see if I could reassemble my old card collection digitally (the original Star Wars CCG game now having gone out of print.)</p>
+
+<p>After some searching and a little luck with Google I found a <a href="http://www.starwarsccg.org/cardlists/">website</a> that hosted individual GIF images of each card! But...&nbsp;<span style="line-height:1.6em">Downloading the 1000+ card images was&nbsp;a little daunting, even to my nostalgic fervor. And since&nbsp;I needed an exuse to learn more Python on my Raspberry Pi anyway, I decided to tackle automating the downloads using a web crawler / scraper library written in Python called </span><a href="http://doc.scrapy.org/en/latest/intro/overview.html" style="line-height: 1.6em;">Scrapy</a><span style="line-height:1.6em">.</span></p>
+
+<p>&nbsp;</p>
+
+<h3>Installation</h3>
+
+<p>Scrapy is installed through <tt>pip</tt>, Python&#39;s package installer. If you do not have <tt>pip</tt> installed it can be installed through <tt>apt-get</tt>:</p>
+
+<div style="background:#eee; border:1px solid #ccc; padding:5px 10px"><tt>sudo apt-get install python-pip</tt></div>
+
+<p>&nbsp;</p>
+
+<p>Before installing scrapy, there are a few additional dependencies needed:</p>
+
+<div style="background:#eee; border:1px solid #ccc; padding:5px 10px"><tt>sudo apt-get install python-lxml libffi-dev</tt></div>
+
+<p>&nbsp;</p>
+
+<p>Once those are installed you can install Scrapy through <tt>pip</tt>:</p>
+
+<div style="background:#eee; border:1px solid #ccc; padding:5px 10px"><tt>sudo pip install Scrapy</tt></div>
+
+<p>&nbsp;</p>
+
+<p>Scrapy also needs an additional Python dependency to handle some hostname verifications when using SSL. You may not need it but better to install now while we are here:</p>
+
+<div style="background:#eee; border:1px solid #ccc; padding:5px 10px"><tt>sudo pip install service_identity</tt></div>
+
+<p>&nbsp;</p>
+
+<p>Finally, for the downloading images (the goal of this little project) we need to ensure that Python has some additional&nbsp;image handling libraries.</p>
+
+<div style="background:#eee;border:1px solid #ccc;padding:5px 10px;"><tt>sudo pip uninstall pillow<br />
+sudo apt-get install libjpeg-dev<br />
+sudo pip install -I pillow</tt></div>
+
+<p>&nbsp;</p>
+
+<p>&nbsp;</p>
+
+<p><em>NOTE: Scra<strong>p</strong>y is not to be confused with Scra<strong>pp</strong>y. Scrappy is a Python library for renaming video files... Mind your Ps and Qs! But especially those Ps...</em></p>
+
+<p>Once installed you should be able to type <tt>scrapy</tt> at your terminal and see the usage for Scrapy.</p>
+
+<p>To start a new scrapy project you can use Scrapy&#39;s scaffolding:</p>
+
+<div style="background:#eee; border:1px solid #ccc; padding:5px 10px"><tt>scrapy startproject &lt;project name&gt;</tt></div>
+
+<p>This will create a default project structure (including files for Items, ItemPipelines, Spiders, and other goodness discussed below.) You can use these as a starting point to right your own!</p>
+
+<p>&nbsp;</p>
+
+<h3>Scrapy</h3>
+
+<p>Scrapy has several key concepts:</p>
+
+<ul>
+    <li><tt>Spider&nbsp;</tt>- A Spider is a module that encapsulates the logic for how to traverse URLs and how to extract information from a page for processing.<br />
+    &nbsp;</li>
+    <li><tt>Item&nbsp;</tt>- An Item is a container that holds information from a page. Items are created by Spiders and can be processed in different ways depending on the type of Item.<br />
+    &nbsp;</li>
+    <li><tt>Item Pipeline</tt>&nbsp;- An Item Pipeline is a processor that handles an Item and performs some action on it or with it. Item Pipelines can be chained together to form a pipeline... (You see what happened there?)&nbsp;<br />
+    &nbsp;</li>
+</ul>
+
+<p>The project I am undertaking (scraping all the card images from <a href="http://www.starwarsccg.org/cardlists/">this site</a>) is relatively simple. So I created a single Spider that goes through the page to find image links. Each image link is encapsulated as an Item. There is a single Item Pipeline in my pipeline that handles downloading the image.</p>
+
+<p>Scrapy already provides an &quot;ImagesPipeline&quot; which provides some basic behavior. If an Item has an&nbsp;<tt>image_urls</tt> field, all images in that field are downloaded by <tt>ImagesPipeline</tt>. The images are saved as a file in a configurable&nbsp;directory with the hash of the image as the filename. Metadata about the image is saved to a <tt>images</tt> field on the Item.&nbsp;</p>
+
+<p>While it is good that Scrapy can handle the heavy lifting of downloading the images, their choice of default file names is not very helpful. So I decided to extend their ImagePipeline and give it more helpful behavior.</p>
+
+<p>First of all, I wrote a simple Item module:</p>
+
+<div style="background:#eee; border:1px solid #ccc; padding:5px 10px"><tt>import scrapy</tt></div>
+
+<div style="background:#eee; border:1px solid #ccc; padding:5px 10px"><tt>class CardImage(scrapy.Item):<br />
+&nbsp; &nbsp; page_title = scrapy.Field()<br />
+&nbsp; &nbsp; image_urls = scrapy.Field()<br />
+&nbsp; &nbsp; images = scrapy.Field()</tt></div>
+
+<p>&nbsp;</p>
+
+<p>As you can see, my <tt>CardImage </tt>extends Scrapy&#39;s <tt>Item</tt>. I gave it a <tt>page_title </tt>to assist with debugging, and the required <tt>image_urls </tt>and <tt>images </tt>field for the default behavior of <tt>ImagesPipeline</tt>.</p>
+
+<p>Next, I wrote a modified version of <tt>ImagesPipeline</tt>. (This required digging around in the Scrapy source code... Fortunately the <tt>ImagesPipeline </tt>module was written in a well factored way and I was able to override a single method to achieve the desired behavior.)</p>
+
+<div style="background:#eee; border:1px solid #ccc; padding:5px 10px"><tt>import string</tt></div>
+
+<div style="background:#eee; border:1px solid #ccc; padding:5px 10px"><tt>import scrapy</tt></div>
+
+<div style="background:#eee; border:1px solid #ccc; padding:5px 10px"><tt>from scrapy.contrib.pipeline.images import ImagesPipeline</tt></div>
+
+<div style="background:#eee; border:1px solid #ccc; padding:5px 10px"><tt>class CardImagePipeline(ImagesPipeline):<br />
+&nbsp; &nbsp; def file_path(self, request, response=None, info=None):<br />
+&nbsp; &nbsp; &nbsp; &nbsp; return string.split(request.url, &#39;/&#39;)[-3] + &#39;/&#39; + string.split(request.url, &#39;/&#39;)[-1]</tt></div>
+
+<p>&nbsp;</p>
+
+<p>The prior implementation of <tt>file_path</tt> just calculated a hash from the image. This one takes the image url, splits it on / and takes the last and third from the last elements (which, because of the structure of the site correspond to the card name and the expansion name respecively.) This creates a nice directory structure where there is one directory for each expansion and the files inside are named correctly for the card they depict.</p>
+
+<p><em>NOTE: This highlights an interesting observation about writing web scrapers. Here I am leveraging a specific convention the site authors used. While this makes solving this problem much easier, it means this web scraper is not at all generic. There seems to be a trade off between &quot;generic&quot; and &quot;easy&quot; when it comes to web scraping!</em></p>
+
+<p>In order to configure Scrapy to use your pipelines, you need to edit the <tt>settings.py</tt> file and add an entry to define your pipelines:</p>
+
+<div style="background:#eee; border:1px solid #ccc; padding:5px 10px"><tt>ITEM_PIPELINES = {&#39;ccg.pipelines.CardImagePipeline&#39;: 1}</tt></div>
+
+<p>&nbsp;</p>
+
+<p>The value (1 in my case) is a priority that determines the order in which pipelines are executed.</p>
+
+<p>As mentioned above, <tt>ImagesPipeline</tt> by default stores images in a configurable directory. That directory is also configured in <tt>settings.py</tt> as follows:</p>
+
+<div style="background:#eee; border:1px solid #ccc; padding:5px 10px"><tt>IMAGES_STORE = &#39;/home/pi/work/scrapy/images&#39;</tt></div>
+
+<p>&nbsp;</p>
+
+<p>Finally we come to the Spider:</p>
+
+<div style="background:#eee; border:1px solid #ccc; padding:5px 10px"><tt>import scrapy</tt></div>
+
+<div style="background:#eee; border:1px solid #ccc; padding:5px 10px"><tt>import urlparse</tt></div>
+
+<div style="background:#eee; border:1px solid #ccc; padding:5px 10px"><tt>from ccg.items import CardImage</tt></div>
+
+<div style="background:#eee; border:1px solid #ccc; padding:5px 10px"><tt>class CcgSpider(scrapy.Spider):<br />
+&nbsp; name = &quot;ccg&quot;<br />
+# &nbsp;allowed_domains = &quot;starwarsccg.org&quot;<br />
+&nbsp; start_urls = [<br />
+&nbsp; &nbsp; &quot;http://www.starwarsccg.org/cardlists/PremiereType.html&quot;<br />
+&nbsp; ]</tt></div>
+
+<div style="background:#eee; border:1px solid #ccc; padding:5px 10px"><tt>&nbsp; seen_urls = []</tt></div>
+
+<div style="background:#eee; border:1px solid #ccc; padding:5px 10px"><tt>&nbsp; def parse(self, response):<br />
+&nbsp; &nbsp; title = response.xpath(&#39;//head/title/text()&#39;).extract()[0]<br />
+&nbsp; &nbsp; for sel in response.xpath(&#39;//a&#39;):<br />
+&nbsp; &nbsp; &nbsp; link = str(sel.xpath(&#39;@href&#39;).extract()[0])<br />
+&nbsp; &nbsp; &nbsp; if (link.endswith(&#39;.gif&#39;)):<br />
+&nbsp; &nbsp; &nbsp; &nbsp; cardImage = CardImage()<br />
+&nbsp; &nbsp; &nbsp; &nbsp; cardImage[&#39;page_title&#39;] = title<br />
+&nbsp; &nbsp; &nbsp; &nbsp; cardImage[&#39;image_urls&#39;] = [&#39;http://www.starwarsccg.org/cardlists/&#39; + link]<br />
+&nbsp; &nbsp; &nbsp; &nbsp; yield cardImage<br />
+&nbsp; &nbsp; &nbsp; if (not link.startswith(&#39;V&#39;) and link.endswith(&#39;Type.html&#39;)):<br />
+&nbsp; &nbsp; &nbsp; &nbsp; if (not link in self.seen_urls):<br />
+&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; self.seen_urls.append(link)&nbsp;<br />
+&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; yield scrapy.Request(urlparse.urljoin(&#39;http://www.starwarsccg.org/cardlists/&#39;, link), callback=self.parse)</tt></div>
+
+<p>&nbsp;</p>
+
+<p>A lot to process here! Let&#39;s start from the top:</p>
+
+<div style="background:#eee; border:1px solid #ccc; padding:5px 10px"><tt>&nbsp; name = &quot;ccg&quot;<br />
+# &nbsp;allowed_domains = &quot;starwarsccg.org&quot;<br />
+&nbsp; start_urls = [<br />
+&nbsp; &nbsp; &quot;http://www.starwarsccg.org/cardlists/PremiereType.html&quot;<br />
+&nbsp; ]</tt></div>
+
+<p>&nbsp;</p>
+
+<p>Important metadata for the Spider. The <tt>start_urls </tt>will (obviously) be automatically processed first. A spider can generate new urls to follow as it processes its initial <tt>start_urls</tt>. I commented out the <tt>allowed_domains </tt>field, but that can be used to limit Scrapy to only scraping within certain sites if desired. It is applicable but not important here since I already limit the urls the spider processes through other mean.</p>
+
+<p><em>NOTE: Scrapy gives a strange error (something to the effect of:&nbsp;<tt>ImportError: No module named items</tt>) if you name your Spider module the same name as your project. (My project is named <tt>ccg </tt>and my Spider is named &quot;ccg&quot; but the module containing the Spider code is called <tt>CcgSpider</tt>.)</em></p>
+
+<p>The <tt>parse</tt> method contains the core logic of the spider. In this case we use xpath to parse out the page title (which is later saved in the item for debugging), and then process every link on the page.</p>
+
+<p>Inspection of the target website shows that each expansion page (such as <a href="http://www.starwarsccg.org/cardlists/PremiereType.html">Premiere</a>) contain <tt>&lt;a&gt;</tt> tags for each image (all ending in <tt>.gif</tt>) and links to other expansion pages (each starting with &quot;V&quot; and ending in &quot;Type.html&quot; by internal convention). I wrote the spider to specifically exploit this.</p>
+
+<p>Thus you have this code:</p>
+
+<div style="background:#eee; border:1px solid #ccc; padding:5px 10px"><tt>&nbsp; &nbsp; for sel in response.xpath(&#39;//a&#39;):<br />
+&nbsp; &nbsp; &nbsp; link = str(sel.xpath(&#39;@href&#39;).extract()[0])<br />
+&nbsp; &nbsp; &nbsp; if (link.endswith(&#39;.gif&#39;)):<br />
+<strong>&nbsp; &nbsp; &nbsp; &nbsp; &lt;process image&gt;</strong><br />
+&nbsp; &nbsp; &nbsp; if (not link.startswith(&#39;V&#39;) and link.endswith(&#39;Type.html&#39;)):<br />
+&nbsp; &nbsp; &nbsp; &nbsp; if (not link in self.seen_urls):<br />
+<strong>&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &lt;process expansion page&gt;</strong></tt></div>
+
+<p>&nbsp;</p>
+
+<p>The spider can yields an arbitrary number of Items or Requests (which are themselves, then processed by the spider). For this spider we encapsulate each image as an Item:</p>
+
+<div style="background:#eee; border:1px solid #ccc; padding:5px 10px"><tt>&nbsp; &nbsp; &nbsp; &nbsp; cardImage = CardImage()<br />
+&nbsp; &nbsp; &nbsp; &nbsp; cardImage[&#39;page_title&#39;] = title<br />
+&nbsp; &nbsp; &nbsp; &nbsp; cardImage[&#39;image_urls&#39;] = [&#39;http://www.starwarsccg.org/cardlists/&#39; + link]<br />
+&nbsp; &nbsp; &nbsp; &nbsp; yield cardImage</tt></div>
+
+<p>&nbsp;</p>
+
+<p>&nbsp;</p>
+
+<p>And each expansion page as a request:</p>
+
+<div style="background:#eee; border:1px solid #ccc; padding:5px 10px"><tt>&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; self.seen_urls.append(link)&nbsp;<br />
+&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; yield scrapy.Request(urlparse.urljoin(&#39;http://www.starwarsccg.org/cardlists/&#39;, link), callback=self.parse)</tt></div>
+
+<p>&nbsp;</p>
+
+<p><em>Note: To prevent infinite loops, I keep track of what expansion pages I have visited in order to prevent revisiting them. Hence the <tt>seen_urls</tt> list. For a general purpose web crawler you would need a much more scalable solution to solve this problem.</em></p>
+
+<p>Note that when returning a Request you can specific a different method in your spider to handle that Request. This allows you to have different logic for different URLs as needed.</p>
+
+<p>That is all there is to this simple web spider!</p>
+
+<p>Thoughts? Questions? Comments? Email me at: smouring@sequoiainc.com</p>
+
+<p>&nbsp;</p>
+
+<p>&nbsp;</p>
+
+<p>&nbsp;</p>

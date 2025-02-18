@@ -1,0 +1,203 @@
+About five years ago my digital life underwent a major philosophical shift from being _device_ centric to being _data_ centric. I used to view my computer as the primary base of operations. Now I view my data as the base and my devices as stateless means to access my data.
+
+I have moved towards a device agnostic model. I do not store anything other than transient data on my computer. All my data is available in a central location and I have many devices that access it, but no one device that stores a unique copy.
+
+For most people, putting their data in "the cloud" serves that purpose. But with using the cloud comes a lose of control (and in rare circumstances, a loss of data due to bugs in cloud syncing or errors in cloud storage management...) For some, there are also security concerns about trusting your unencrypted data to a third party.
+
+For this reason and others, I wanted a simple solution to provide global access to my data from all my devices without entrusting it to a third party. 
+
+There are many advanced (and expensive!) solutions out there. Synology and Drobo make excellent NAS products for the advanced home owner and the small business markets.
+
+At the moment however, I lack the budget to commit $600 - $800 to a NAS solution. Less expensive options (such as the single drive NAS products targeted towards consumers) are often missing raw access to the underlying storage. (You cannot always just plug the drive into a computer and access the data directly, but must instead _only_ access your data through the cloud.)
+
+Given these constraints I decided to roll my own NAS using my brand new Raspberry Pi B+! 
+
+_NOTE: The B+ has several improvements over the B, the most notable of which is the use of a microSD with a much more secure and less easily damage card reader! An essential feature for a NAS which will see a long deployment in my data closet._
+
+_NOTE: At home I use primarily Windows and Android, so this will be focused on supporting those environments. Mac and Linux users will find this easily adaptable however._
+
+For hardware, I enlisted my [Silicon Power A80](https://www.amazon.com/gp/product/B005GHTEV8/ref=as_li_tl?ie=UTF8&camp=1789&creative=9325&creativeASIN=B005GHTEV8&linkCode=as2&tag=smouring-20&linkId=9afcad6a909754e8b0657d330fedce33) hard drive and my [powered USB hub](https://www.amazon.com/gp/product/B014ZQ07NE/ref=as_li_tl?ie=UTF8&camp=1789&creative=9325&creativeASIN=B014ZQ07NE&linkCode=as2&tag=smouring-20&linkId=20a978999aec082411004f183c97c645) from my [Bitcoin project](http://blogs.sequoiainc.com/blogs/raspberry-pi-bitcoin-mining) to provide the attached storage for this project. 
+
+_NOTE: You will probably need a powered USB hub even with the improved power routing on the Raspberry Pi B+. Plugging the external hard drive directly into my Pi drew more current then the Pi could support causing the hard drive to get stuck in a startup/shutdown cycle._
+
+With the above equipment in hand, let's build a NAS!
+
+## Instructions
+
+At a high level we are going to:
+
+1.  Mount a hard drive to the Raspberry Pi.
+2.  Configure the hard drive to remount every time the Raspberry Pi restarts.
+3.  Expose the mount point to the network using Samba.
+
+_NOTE: [Samba](http://www.samba.org/) is an open source tool used to expose resources (such as a file directory or a printer) on a network. It is a key foundational component of many (even commercial) NAS systems._
+
+This will give us the full effect of a NAS and allow centralized access to our data from any device.
+
+### NTFS
+
+My hard drive is formatted as NTFS, which is not well supported natively by the Raspberry Pi, so as a first step we will install a new driver:
+
+```
+sudo apt-get install ntfs-3g
+```
+
+Once that is installed we can mount the hard drive with read and write access without a problem.
+
+### Mounting / Unmounting
+
+Plug in the hard drive to the Raspberry Pi. Unlike a Windows or Mac computer, the hard drive is not automatically mounted as a drive letter or anything like that. You need to do the mounting yourself.
+
+Create a directory that you want to be the mount point.
+
+```
+mkdir data
+```
+
+Then run the `mount` command to mount the hard drive to that directory:
+
+```
+sudo mount /dev/sda1 data
+```
+
+_NOTE: The `/dev/sda1` device is the default device if you have only one drive attached. If you have multiple devices attached to your Raspberry Pi you may need to modify that to match the drive._
+
+You should be able to view the contents of your hard drive now:
+
+```
+cd data
+ls -l
+```
+
+If you want to unmount the drive, you can do the following:
+
+```
+sudo umount data
+```
+
+### Remounting
+
+Excellent! First step is completed! Now we want to ensure that this drive is mounted every time the Raspberry Pi is restarted.
+
+To do so, we need to modify the `fstab` file which determines what devices are mounted when the Pi is booted. You can mount the Pi using the `/dev/sda1` handle, but as noted above, that handle may change if you mount multiple devices. Instead, you can mount by UUID. Each external device has a UUID which uniquely indentifies that device. 
+
+To find the UUID for your hard drive, run this command:
+
+```
+sudo blkid /dev/sda1
+```
+
+You will get a result like this:
+
+```
+/dev/sda1: LABEL="MASTER" UUID="D4C4AA51C4AA35A0" TYPE="ntfs"
+```
+
+Copy that UUID. Then edit the `fstab` file using this command:
+
+```
+sudo vi /etc/fstab
+```
+
+You will see a file that looks something like this:
+
+```
+proc                  /proc          proc     defaults          0  0
+/dev/mmcblk0p1        /boot          vfat     defaults          0  2
+/dev/mmcblk0p2        /              ext4     defaults,noatime  0  1
+```
+
+You will want to add this row:
+
+```
+UUID=<YOUR UUID> <PATH>/data  ntfs-3g  rw,default        0  0
+```
+
+For example, my file now looks like this:
+
+```
+proc                  /proc          proc     defaults          0  0
+/dev/mmcblk0p1        /boot          vfat     defaults          0  2
+/dev/mmcblk0p2        /              ext4     defaults,noatime  0  1
+```
+
+```
+UUID=D4C4AA51C4AA35A0 /home/pi/data  ntfs-3g  rw,default        0  0
+```
+
+To test this, reboot your Pi:
+
+```
+sudo reboot
+```
+
+And then verify that you can still access the mount point directory.
+
+### Samba
+
+The third and final step is to install and configure Samba to share this mount point with other computers on your network.
+
+To install Samba:
+
+```
+sudo apt-get install samba samba-common-bin
+```
+
+By default Samba should be installed as a service and restart whenever the Pi restarts. 
+
+Now you need to edit the Samba configuration file and change a few settings.
+
+```
+sudo vi /etc/samba/smb.conf
+```
+
+You will want to change the following lines:
+
+```
+workgroup = <YOUR WORKGROUP NAME>
+wins support = yes
+```
+
+_NOTE: Your workgroup name in Windows is usually `WORKGROUP`. Some folks have reported that you **must** use `WORKGROUP` regardless otherwise Samba will not work correctly._
+
+At the bottom of the configuration file there are several share definitions, denoted by a name instead of square brackets with indented configuration. There are several defaults provided. I choose to delete these and make a single entry of my own. You may leave the defaults if you wish. Either way!
+
+Here is an example of my share definition:
+
+```
+[data]
+   comment=Data
+   path=/home/pi/data
+   browseable=Yes
+   writeable=Yes
+   only guest=no
+   create mask=0777
+   directory mask=0777
+   public=no
+```
+
+The final step is to set the password for the share. Run this command:
+
+```
+smbpasswd -a pi
+```
+
+You will be prompted for a password (and then asked to confirm it.)
+
+### Conclusion
+
+That is all there is to it! Your Raspberry Pi should appear under the Network section of My Computer. If you expand it, you will see the Samba share.
+
+I went the extra step of mapping the share as a network drive so it would be more easily accessible. You can do this by going to Tools -> Map Network Drive. You select your drive letter of preference, and then locating the Samba share by clicking Browse and going to Network.
+
+You can also access the Samba share on your mobile android devices by using a file explorer (I recommend [ES File Explorer](https://play.google.com/store/apps/details?id=com.estrongs.android.pop&hl=en)). Each application will be different, but if you use ES File Explorer you can go to Network and add a network location. For Server you need to put the IP address of your Raspberry Pi ([see here](http://blogs.sequoiainc.com/blogs/raspberry-pi-host-your-own-git-repository) on how to set a static IP) and the name of your share. Such as:
+
+```
+192.168.1.132/data
+```
+
+And then provide the username (`pi`) and password (whatever you set.)
+
+You can then browse the contents of your NAS from your phone!
+
+Thoughts? Comments? Questions? Email me at: smouring@sequoiainc.com

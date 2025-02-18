@@ -1,0 +1,188 @@
+My son has boundless energy... and often wakes up much earlier and easily than my wife and I do! As a coping strategy we stocked his room with toys with the thought that it would delay his mad dash out of his room and into ours! The toy strategy has had mixed success, so I decided to build myself a device to take it to the next level...
+
+My son is not quite old enough to tell time, so asking him to wait until 8:00 to come running into our room is tricky. Instead, I decided to replicate something I have seen called an "OK 2 Wake" clock. The basic premise of the device is that you can set an "wake" time. When the clock reaches the wake time, it lights up silently. This signals that it is "ok" to get up and run into Mommy and Daddy's room. It has the advantage that, on the off chance the child is sleeping it, it lights up silently allowing them to continue to sleep uniterrupted. (And if you are a parent, you know the drill... Let sleeping children lie!)
+
+So, having a spare Raspberry Pi (as I always do) I decided to build my own! 
+
+ 
+
+######Hardware
+
+The Raspberry Pi, in an effort to save cost, does not come with a battery powered Real Time Clock module. It relies on a network connection to get its time from a central server each time it boots up (using NTP or Network Time Protocol). My son's room lacks a hardline connection and also gets bad WIFI reception... And since I wanted to learn how to install an RTC module anyway, I decided my Raspberry Pi OK 2 Wake clock with use a battery powered RTC to keep track of the time, even between power offs.
+
+There are several Real Time Clock (RTC) components, but the common ones seem to have the part numbers DS3231 and DS1307. Whichever RTC you get, make a note of which type of module it is for some of the later steps. I choose a [DS3231 from Amazon](https://www.amazon.com/gp/product/B00R5CH1LC/ref=as_li_tl?ie=UTF8&camp=1789&creative=9325&creativeASIN=B00R5CH1LC&linkCode=as2&tag=smouring-20&linkId=d76d297c343dc9884fd6d0cdd0c24f2b) that has worked really well so far.
+
+I also selected a [bright white LED](https://www.amazon.com/gp/product/B0066AYRSY/ref=as_li_tl?ie=UTF8&camp=1789&creative=9325&creativeASIN=B0066AYRSY&linkCode=as2&tag=smouring-20&linkId=afb3fb56c0e94305c0fea5cf4230cd39), although almost any LED (or bank of LEDs) would work just fine.
+
+######Setting Up I2C
+
+The RTC module that I am using has female pin connectors that sit on top of the top 5 pins on the upper left of the Raspberry Pi and communicates with the Pi using the I2C protocol. By default the Raspberry Pi has I2C disabled, so enabling it is our first task.
+
+You are "supposed" to be able to enable i2C using the built in configuration tool:
+
+```
+sudo raspi-config
+```
+
+Then look under the Advanced Options -> Enable I2C.
+
+In my experience, this does not fully enable I2C and some additional manual steps are reqiured:
+
+```
+sudo nano /etc/modules
+```
+
+At the end of this file, you should add the following lines if they are not present:
+
+```
+i2c-bcm2708
+i2c-dev
+``` 
+
+Then you need to do the following:
+
+```
+sudo nano /boot/config.txt
+``` 
+
+Find the following lines in the file and ensure they are not commented out (or add them if they are not present):
+
+```
+dtparam=i2c1=on
+dtparam=i2c_arm=on
+``` 
+
+Now power down your Pi:
+
+```
+sudo halt -p
+``` 
+
+And wire up your RTC module. When you power up your Raspberry Pi, you can test your setup by installing the following tools:
+
+```
+sudo apt-get install python-smbus
+sudo apt-get install i2c-tools
+``` 
+
+And then running this command:
+
+```
+sudo i2cdetect -y 1
+``` 
+
+You should see a grid of I2C channels. If you see the address of your RTC (usually 68) in the grid (or any number if this is the RTC is the only connected device) you have succeeded!
+
+NOTE: If you have trouble, consult [this guide](https://learn.adafruit.com/adafruits-raspberry-pi-lesson-4-gpio-setup/configuring-i2c) for more information and troubleshooting options.
+
+######Setting Up The RTC Module
+
+With your RTC Module installed and communicating over I2C it is now time to configure the Pi to use it to keep time!
+
+The easiest way to configure the RTC Module is to start your Pi on your network so it gets the correct time from NTP. You can then program this time into the RTC Module and from then on the Pi can rely on that even when it is disconnected from the network (which is preferred in our case due to the WIFI reception in my son's room).
+
+The first step is to load the kernel module necessary to control the RTC:
+
+```
+sudo nano /etc/modules
+``` 
+
+Add this line to the botom of the file:
+
+```
+rtc-ds3231
+``` 
+
+NOTE: If you are using a DS1307 module, add rtc-ds1307 instead.
+
+Next you need to configure your Pi to load the RTC Module and read the system time from it at startup:
+
+```
+sudo nano /etc/rc.local
+``` 
+
+Add these lines to the bottom of the file just before the exit 0 line: 
+
+```
+echo ds3231 0x68 > /sys/class/i2c-adapter/i2c-1/new_device
+hwclock -s
+``` 
+
+Now, since your RTC Module is new, it will not have any time set yet. If you run this command:
+
+```
+sudo hwclock -r
+``` 
+
+You will see it report a time from January 2000 or something like that. If you are on a network and your Pi already received its date/time from NTP, you can set the RTC Module to have the same time. It will then carry on with this time even after you are disconnected from the network and do not have NTP available.
+
+To double check your curent date/time run:
+
+```
+date
+``` 
+
+If the date/time is correct, then write this time to the RTC Module:
+
+```
+sudo hwclock -w
+``` 
+
+_NOTE: If your date/time is not correct or you are not on a network with NTP, then you will need to manually set the date/time for your Pi before writing it to the RTC Module. There are instructions on how to do this in the man pages for date._
+
+
+######ok2wake.py
+
+At this point we should have a Raspberry Pi that is capable of keeping time even when disconnected from the network! This is important for this project because I need to be able to place the device in my son's room with minimal fuss and know it will always activate at the same time every day!
+
+The next step is to wire up an LED to the Pi and write a Python script that activates the light!
+
+I want the light to turn on at the right time (8:00 for our family) and stay on for a while. But after a long enough time, the light should go back off and get ready for the next day. 
+
+Thankfully, this is a really simple script in Python:
+
+```
+import RPi.GPIO as GPIO
+import time
+import datetime
+hourToWake = 8
+try:
+  GPIO.setmode(GPIO.BCM)
+  GPIO.setup(18, GPIO.OUT)
+  while(True):
+    currentHour = datetime.datetime.now().hour
+    if (currentHour >= hourToWake and currentHour < hourToWake+2):
+      GPIO.output(18, 1)
+    else:
+      GPIO.output(18, 0)
+    time.sleep(5)
+  GPIO.output(18, 0)
+  GPIO.cleanup()
+except:
+  print "Error!"
+  GPIO.cleanup()
+``` 
+
+A few things to note. There is an infinite loop that runs as long as the Pi is powered on. It first gets the hour of the current time. It then checks if that hour is between the hour to wake (set to 8:00 in this case) and 2 hours after the hour to wake (this give us a range of time to keep the light on). If the hour is within that range, it actives the light, otherwise it disables it. It then sleeps for five seconds to give the Pi's CPU a rest.
+
+The entire set of logic is enclosed in a `try-except` block that catches any exceptions (including any keyboard interrupts) and properly cleans up the GPIO infrastructure.
+
+Running this script (at the right time of course!) will demonstrate that the LED lights up and stays lit for two hours! Success!
+
+The final step is to schedule this script so that it restarts whenever the Pi restarts. (This makes the Pi much more portable... You can unplug it, move it, and plug in back in without having to SSH back into it to restart the `ok2wake.py` script!)
+
+To do this, I just scheduled it on crontab using the `@reboot` time command:
+
+```
+sudo crontab -e
+``` 
+
+Then add this line to the bottom:
+
+```
+@reboot python /home/pi/python/ok2wake/ok2wake.py &
+``` 
+
+_NOTE: The script should be run in the background (notice the trailing &) to prevent it from causing any boot processes to hang._
+
+And that is it! Questions? Comments? Email me at: smouring@sequoiainc.com!

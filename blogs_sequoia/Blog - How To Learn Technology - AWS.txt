@@ -1,0 +1,139 @@
+###### Introduction
+
+*Originally published May 12, 2017. Updated August 23, 2018.*
+
+This blog post is from a series. Please see the [introductory post](https://blogs.sequoiainc.com/how-to-learn-technology-introduction/) for more information.
+
+###### Recommended Reading
+
+I highly recommend the [AWS Documentation](https://aws.amazon.com/documentation/) which is replete with thorough examples and useful information. 
+
+Another easy read that sets a higher level of context is the [Amazon AWS whitepaper](https://d0.awsstatic.com/whitepapers/aws-overview.pdf).
+
+###### Recommended Training
+
+Amazon offers [AWS Training](https://aws.amazon.com/training/) in a number of classes and class formats. I have taken several of them and I can recommend the lecture part of the training as excellent. 
+
+*NOTE: I do recommend that you take the training from an actual Amazon instructor and not a contracted training company. The quality of instruction is much higher!*
+
+I do find the lab portion of the training classes to be lacking as it is of the "copy and paste" step by step variety. Still, if you want to pursue certification (which I do recommend), the classes are an excellent addition to your own independent study.
+
+There are three introductory courses based on your role:
+
+* Developer
+* System Administrator
+* Solutions Architect
+
+There are also advanced courses that build on these and prepare you for the higher levels of certification.
+
+###### Background
+
+This blog post assumes you have some basic technical background. It does not assume any prior knowledge about AWS, but assumes you are willing to dive in and learn it! Many of these objectives require reading and research. So use them as a direction for your study, not as an end in themselves.
+
+###### Objectives
+
+I have opted for a more linear arrange of tasks.
+
+Some objectives I have marked as "advanced". I would skip these initially and do all the other objectives before returning and doing the advanced ones.
+
+**Objective 1** - Create an AWS account and log into the AWS Console. This is an easy victory and gets you ready for the world of AWS!
+
+**Objective 2** - Create an email billing email alert with AWS CloudWatch and AWS SNS that warns you if you spend more than $10 a month. This objective involves a lot of steps, but do not fear, there are many step by step tutorials. 
+
+Normally I would consider that a bad thing, but in this case, a little hand holding is good and having an email alert when you are spending more money than you planned gives you confidence to keep learning. (If you work for a company with a book budget or training budget see if they will reimburse your AWS bill! If they will not, Sequoia is [hiring](https://www.sequoiainc.com/careers/)...)
+
+*Success Criteria*: You can send yourself an email through the SNS topic you created. If you set the threshold really low ($0.50) you receive an email.
+
+**Objective 3.1** - Start an EC2 instance in a public subnet based on AWS Linux. Install PuTTY. Learn how to connect to the EC2 instance using PuTTY. 
+
+There is a lot of material here! For each field in the Launch Instance wizard, spend some time researching what it means. What is an AMI? What types of EC2 instances are there? What is a subnet? What options are there for running an EC2 instance? What is a security group? What does it do? All these are questions you will want to explore a little.
+
+PuTTY is a powerful tool and one that you will want to become familiar with if you have not already.
+
+*Success Criteria*: You can log into your EC2 instance with PuTTY.
+
+**Objective 3.2** - Start an EC2 instance in a public subnet based on Windows. Setup Remote Desktop and learn how to connect to the instance using RDP.
+
+*Success Criteria*: You can log into your EC2 instance with RDP.
+
+**Objective 3.3** - Start an EC2 instance in a *private* subnet. Connect to one of the "public subnet" EC2 instances you created earlier and frmo there connect to your new "private subnet" EC2 instance. 
+
+*Success Criteria*: You can log into your EC2 instance in the private subnet from another instance that is publicly accessible.
+
+**Objective 3.4** - Create two security groups (A and B). Setup security group A to allow traffic from port 22 only from servers in security group B. Assign security group A to a server in a private subnet and security group B to another server. 
+
+*Success Criteria*: You can only connect to the server in group A from another server in group B. If you remove security group B from the public subnet server you can not longer SSH into the private subnet server.
+
+**Objective 3.5** - Go onto the AWS Marketplace and choose an instance to startup. (I suggest Redmine as it is free and simple to use.) Start up an EC2 instance running Redmine from the AWS Marketplace in a public subnet. 
+
+*Success Criteria*: You can visit the Redmine (or whatever tool you chose) instance from your browser.
+
+**Objective 3.6** - Create a load balancer. Have it load balance your AWS Marketplace instance. 
+
+*Success Criteria*: You can still visit the Redmine (or whatever) from your browser.
+
+**Objective 3.7 - ADVANCED** - Start another instances from the AWS Marketplace. This time, start it in a private subnet. Use PuTTY to setup a Tunnel / Port Forwarding to your local computer. 
+
+*Success Criteria*: You can visit the Redmine (or whatever) instance from your browser.
+
+**Objective 4.1 - S3** - Take the following objectives as an opportunity to build a simple personal website. Put whatever you want on it and use this as a motivation to work the next few objectives. You can see some of my toy websites [here](www.marlthehammer.com) and [here](https://stephenmouring.name).
+
+**Objective 4.2** - Create an S3 bucket. Create a simple HTML file and upload it to the bucket. 
+
+*Success Criteria*: Your file is in the S3 bucket.
+
+**Objective 4.3** - Make your S3 bucket public and web enabled. Browse to the S3 bucket URL and see your file.
+
+*Success Criteria*: Your file can be viewed from a browser on the internet.
+
+**Objective 4.4** - Create another S3 bucket. Upload some files. Setup an S3 lifecycle policy on your bucket to move files to Glacier after 1 days, and delete them after 3. 
+
+*Success Criteria*: Your files are migrated according to your S3 lifecycle policy.
+
+**Objective 4.5 - ADVANCED** - Register a domain name with Route 53. Setup your S3 bucket to be served up from behind the domain name.
+
+*Success Criteria*: You can visit your domain name and see the HTML files rendered from there.
+
+**Objective 4.6 - ADVANCED** - Setup a certificate in AWS ACM and attached it your domain name and the bucket serving content to the internet.
+
+*Success Criteria*: You can visit your domain name over HTTPS and see a valid certificate.
+
+**Objective 4.7 - ADVANCED** - Deploy your S3 backed website into a CloudFront distribution.
+
+*Success Criteria*: Your website is served up via CloudFront.
+
+**Objective 5** - Create a new IAM user. Learn about IAM policies and IAM roles. Assign your new IAM user some basic, pre-made policies from Amazon's pre-made list, and set a password and an API key (save this for later). Log into your console as that new IAM user. See how the policy controls what you can do and cannot do.
+
+**Objective 6** - Look at Glacier. Create a vault. Download [FastGlacier](https://fastglacier.com/), give your IAM user full read/write access to Glacier in IAM, and then use the API key to configure FastGlacier. Copy some files into Glacier.
+
+*Success Criteria*: Your files are stored in Glacier.
+
+**Objective 7.1** - Create a Lambda function. (You will need a simple program to execute. You can use the Python program listed [here](https://blogs.sequoiainc.com/aws-using-lambdas-for-simple-apis/) if you need a place to get started.
+
+*Success Criteria*: You can execute your Lambda function in the Lambda console by sending a test event.
+
+**Objective 7.2** - Create an API in API Gateway to allow your Lambda function to be invoked.
+
+*Success Criteria*: You can invoke your Lambda function from the API Gateway URL.
+
+**Objective 7.3 - ADVANCED** - Create a subdomain in your custom domain (if you have one, otherwise register one in Route 53). Attached the subdomain to your API Gateway.
+
+*Success Criteria*: You can invoke your Lambda function from your custom URL.
+
+**Objective 7.4 - ADVANCED** - Setup a certificate in AWS ACM  and attach it to your API Gateway.
+
+*Success Criteria*: You can invoke your Lambda function from your a custom domain name *over HTTPS*.
+
+**Objective 8.1** - Create a CodeCommit repository. Install Git on your computer. Learn the basics of Git.
+
+*Success Criteria*: Commit and push a file from your computer and verify it is shown in the CodeCommit repository.
+
+**Objective 8.2 - ADVANCED** - Follow the steps in [this blog](https://blogs.sequoiainc.com/aws-devops-pipeline-for-lambda-functions/) to create a DevOps pipeline for a Lambda function.
+
+*Success Criteria*: A single commit causes your Lambda function to be rebuilt.
+
+**To be continued...**
+
+###### Contact
+
+Questions? Comments? Email me at smouring@sequoiainc.com!

@@ -1,0 +1,244 @@
+#### Introduction
+
+Whether or not you believe cryptocurrency is the future or just a fad, most people agree that the underlying blockchain technology is here to stay and poised to make a transformative impact on industry and society. 
+
+The first generation of blockchain based platforms (such as Bitcoin, which everyone is now familiar with) were optimized only for digital currency exchange and have little utility beyond that single purpose. 
+
+But later generations of blockchain platforms (in particular [Ethereum](https://www.ethereum.org)) have embraced more advanced features such as supporting a complete programming language that can execute programs (called "smart contracts") on the underlying blockchain. 
+
+This has enabled the emergence of Distributed Applications (DApps) that manage some or all of their state on the blockchain using smart contracts.
+
+Like most new technologies there is a large amount of hype surrounding DApps. While I do not think that DApps will save the world, they certainly excel in situations where immutable, persistent state is important or where multiple, mutually mistrustful clients need to coordinate in a transparent fashion.
+
+I see a strong future for DApps so I am writing this blog series as a sort of chronicle of my journey to becoming an entry level blockchain developer. 
+
+Rather than focus on simple proofs of concepts, my plan is to build up a production ready foundation for DApp development, and learn techniques that are applicable for real world applications.
+
+This first blog post is focused on setting up and managing your own full Ethereum node (deployed in AWS) and showing how to interact with it using the various interfaces it provides. 
+
+This is a necessary part of DApp development as it provides you a gateway into the Ethereum network and the infrastructure necessary to execute and interact with smart contracts from a variety of programmatic sources.
+
+#### Architecture
+
+I opted for a two layer subnet architecture comprised of a public (internet addressable) subnet and a private subnet (not internet addressable but can make outbound calls via a NAT Gateway). The private subnet will hold the Ethereum node and the public subnet will hold any application servers that need interact with it.
+
+*NOTE: I launched a `t2.nano` EC2 instance in the public subnet to act both as a bastion host and as a testing platform.*
+
+The reasoning for this architecture is to isolate the Ethereum node and prevent it from being publicly accessible from the internet. 
+
+*NOTE: In AWS there are alternatives to using this two layer architecture. For example, I could have set a security group on the Ethereum node server that only granted access to other servers in the same security group. Thus the Ethereum node's ports would not be publicly accessible even though it was in a public subnet. Its partly a matter of preference.*
+
+To run the Ethereum node I selected a `m5.large` EC2 instance based on the Ubuntu Server 16.04 LTS AMI. 
+
+The public Ethereum blockchain is large and constantly growing so the instance will require enough storage space to hold the blockchain data.
+
+Thus, in addition to the root volume, I also attached an additional 256 GB EBS volume. The first order of business is to mount that volume to the EC2 instance and ensure that it is remounted after each system reboot.
+
+#### Storage
+
+In Linux, storage devices are mounted to a directory (called a mount point). You will need to create a mount point for the EBS volume:
+
+```
+sudo mkdir /data
+sudo mkdir /data/blockchain
+```
+
+Next you will need to determine the device name of your EBS volume. Run the `lsblk` command and find the name of the (currently unmounted) device. In my case it was `/dev/nvme1n1/`.
+
+To format the EBS volume and prepare it for use, execute this command (substituting your device name where appropriate):
+
+```
+sudo mkfs -t ext4 /dev/nvme1n1
+```
+
+Next you can mount the EBS volume to the directory you created:
+
+```
+sudo mount /dev/nvme1n1 /data/blockchain
+```
+
+To avoid needing to run your Ethereum node as the `root` user, change the ownership of the `/data/blockchain` directory to match your login user:
+
+```
+sudo chown ubuntu:ubuntu /data/blockchain
+```
+
+Next, verify that you have read/write access by writing a temporary file:
+
+```
+touch /data/blockchain/test
+```
+
+If that succeeds then the final step is to register the volume in the `fstab` file so it will be remounted each time the EC2 instance reboots. To accomplish this, edit the `fstab` file:
+
+```
+sudo vi /etc/fstab
+```
+
+And add this line to the bottom:
+
+```
+/dev/nvme1n1 /data/blockchain ext4 defaults 1 1
+```
+
+Reboot your EC2 instance and confirm that the `/data/blockchain` directory is present and that it contains your `test` file. You can then remove the `test` file.
+
+#### geth - Installation
+
+Once you have the storage configured, you need to run a copy of `geth` that will sync the public blockchain and allow you to broadcast new transactions. 
+
+To install `geth` on Ubuntu, run the following commands:
+
+```
+sudo apt-get update
+sudo apt-get upgrade
+
+sudo apt-get install software-properties-common
+sudo add-apt-repository -y ppa:ethereum/ethereum
+sudo apt-get update
+sudo apt-get install ethereum
+```
+
+If these commands run successfully you should be able to invoke `geth` from the command line. Before you do so however, you should be aware that, by default, `geth` will start syncing the blockchain to a directory on your root volume. 
+
+The root volume is not nearly large enough to hold the blockchain data and filling up the root volume can make your instance inaccessible by preventing SSH login. So it is important to redirect `geth` to use the EBS volume you mounted in the prior section. This is accomplished with the `--datadir` command line argument:
+
+```
+geth --datadir "/data/blockchain/"
+```
+
+Executing the above command should start `geth` successfully. Watch the logs for a bit and verify that it connects to the network and starts syncing. 
+
+It will take many hours (even days) to fully sync, so once you are sure there are no network issues preventing your node from connecting to the internet, close `geth` and move to the next step.
+
+There are two ways of interacting with `geth`. A process on the same instance as `geth` can directly connect (or "attach") using an Inter Process Communication (IPC) mechanism. 
+
+Alternatively `geth` can launch a Remote Procedure Call (RPC) interface and accept calls from a remote server or servers.
+
+We will discuss both methods.
+
+#### geth - IPC / Console
+
+To attach to the `geth` process and access the console you need to have `geth` running in the background:
+
+```
+nohup geth --datadir "/data/blockchain/" &
+```
+
+This will create a `nohup.log` file in your current directory. You can view this log to confirm that `geth` started correctly.
+
+To attach to the `geth` console you need to specify the `.ipc` file to use. Since we are not running `geth` in its default directory we need to pass the path to our `.ipc` file to the `attach` command:
+
+```
+geth attach /data/blockchain/geth.ipc
+```
+
+This will start the `geth` console. 
+
+There are many many useful commands to run here and a full discussion is outside the scope of this blog. However, a simple thing to start with would be this:
+
+```
+eth.syncing
+```
+
+This will report the status of the `geth` sync including the highest block `geth` has reached and whether or not the sync is still active. If syncing is complete (or if the `geth` process just started and is not syncing yet) it will return `false`.
+
+*NOTE: Some Ethereum / geth interface libraries (such as [Web3J](https://github.com/web3j/web3j)) allow you to directly connect to to `geth` via IPC. This would enable a single server architecture (where `geth` would run as a private process on an application server) which might or might not be more suitable than the two subnet architecture we are using here depending on your use case.*
+
+The full range of Ethereum network interactions can be conducted on the console, so it is worth spending some time familiarizing yourself with it.
+
+#### geth - Configuring RPC
+
+Another method for interacting with `geth` is to use its embedded RPC server. The RPC server enables communication between servers via HTTP requests containing requests/responses formatted in JSON. 
+
+There are many language specific APIs / wrapper libraries for interacting with the `geth` RPC server ([Web3J](https://github.com/web3j/web3j) for Java was mentioned above, and there is also [web3.js](https://github.com/ethereum/web3.js/) for JavaScript, [web3.py](https://github.com/ethereum/web3.py) for Python, and so forth).
+
+By default the RPC server is disabled in `geth`. To enable it and make is accessible to other servers, we need to pass several different command line arguments:
+
+```
+nohup geth --datadir /data/blockchain/ --rpc --rpcaddr "0.0.0.0" --rpcport 5000 &
+```
+
+The `--rpc` enables the RPC server. 
+
+The `--rpcport 5000` dictates which port the RPC server will run on. This can be set to any value you choose. Just ensure that the AWS security group on your server allows that port through!
+
+The `--rpcaddr "0.0.0.0"` dictates which servers can access this RPC server. The default value is `localhost` which only allows processes co-located on the same server to connect. If you specify an IP address or CIDR block, the RPC server will only accept connections from servers that match that setting. Setting it to `0.0.0.0` allows connection from any server.
+
+*NOTE: I elected to set it to `0.0.0.0` since the node is already running in a private subnet and is secured by a security group which only allows connections from other sources that are themselves in specific security group. This already white lists what sources can access the RPC server making this parameter largely redundant.*
+
+To test that your RPC server is working, run the following command from another server (such as your bastion host) in the public subnet:
+
+```
+curl <PRIVATE IP OF RPC SERVER>:5000  -X POST --data '{"jsonrpc":"2.0","method":"web3_clientVersion","params":[],"id":1}' -H "Content-Type: application/json"
+```
+
+You should get a valid response denoting the version of `geth` you are running.
+
+#### geth - Running as a Service
+
+As a final step, I wanted my server to be resilient and properly restart `geth` if the server restarted. 
+
+There are a number of different ways to accomplish this in Linux, but I opted to use `systemd`.
+
+You need to create a service description file called `geth.service` with these contents:
+
+```
+[Unit]
+Description=geth
+
+[Service]
+Type=simple
+User=ubuntu
+ExecStart=/usr/bin/geth --datadir /data/blockchain/ --rpc --rpcaddr "0.0.0.0" --rpcport 5000
+
+[Install]
+WantedBy=default.target
+```
+
+*NOTE: You must specify the full path to the `geth` command.*
+
+*NOTE: There are many more options available beyond what I am showing here. This is just the most basic configuration.*
+
+Copy the `geth.service` file to the `/etc/systemd/system` directory:
+
+```
+sudo cp ./geth.service /etc/systemd/system/geth.service
+```
+
+Then reload the `systemd` process and install the service script:
+
+```
+sudo systemctl daemon-reload
+sudo systemctl enable geth.service
+```
+
+The `geth` service will now automatically start on server start. To manually start, you can run this command:
+
+```
+sudo systemctl start geth
+```
+
+Likewise, to manually stop `geth`, you can run this command:
+
+```
+sudo systemctl stop geth
+```
+
+At any time you can view the status of the `geth` service (which will also show you the latest 20 lines or so of the `geth` log):
+
+```
+sudo systemctl status geth
+```
+
+Reboot your server and confirm that `geth` is started.
+
+#### Conclusion
+
+Congratulations! You now have a full Ethereum node running in a secure and resilient environment, accessible by other servers and AWS services but not exposed to the public internet. 
+
+Where to from here? 
+
+In the next few blog posts I will explore various methods of writing software that interfaces with the Ethereum node via its RPC connection. After that we will leverage that knowledge to build a DApp and fully flex Ethereum's smart contract muscles.
+
+Questions? Comments? Email me at smouring@sequoiainc.com!

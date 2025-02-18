@@ -1,0 +1,73 @@
+###### Introduction
+
+This blog post is from a series. Please see the [introductory post](https://blogs.sequoiainc.com/how-to-learn-technology-introduction/) for more information.
+
+Be aware, this is a work in progress and something that I need to grow and expand over time! Please give feedback early and often!
+
+###### Recommended Reading
+
+Here are a couple books you should read at least once in your career. I might go so far as to say you should them once every three years. 
+
+To be fully appreciated, you should read these *after* you have some experience programming... And then several times after that as your maturity grows.
+
+* [Design Patterns](https://www.amazon.com/gp/product/0201633612/ref=as_li_tl?ie=UTF8&camp=1789&creative=9325&creativeASIN=0201633612&linkCode=as2&tag=smouring-20&linkId=c6af8cdf74a24ee62e715b44396ebd7a) - Also called the "Gang of Four" book, this book calls out and describe a number of fundamental patterns of good software development. Like all best practices though, these should never be applied [blindly or indiscriminately](https://blogs.sequoiainc.com/blindly-following-best-practices-not-a-best-practice/).
+
+* [Refactoring](https://www.amazon.com/gp/product/0201485672/ref=as_li_tl?ie=UTF8&camp=1789&creative=9325&creativeASIN=0201485672&linkCode=as2&tag=smouring-20&linkId=7f313bfeb6b859983cd5408baae428c3) - The concept of refactoring is what separates good programmers from bad programmers in my mind. This is the definitive book on the subject and a classic read.
+
+* [Pragmatic Programmer](https://www.amazon.com/gp/product/020161622X/ref=as_li_tl?ie=UTF8&camp=1789&creative=9325&creativeASIN=020161622X&linkCode=as2&tag=smouring-20&linkId=8b3cf0bdf4d1e447e63871551da9db2a) - This is the definitive "good programmer advice" book. It includes a lot of very valuable concepts that occur throughout the discipline.
+
+The above are core books in my opinion, but some others that serve to give you some perspective for working in a corporate setting:
+
+* [Extreme Programming](https://www.amazon.com/gp/product/0321278658/ref=as_li_tl?ie=UTF8&camp=1789&creative=9325&creativeASIN=0321278658&linkCode=as2&tag=smouring-20&linkId=a53b4b445c250c56d2e57e6d323863de) - This was the book that arguably started the "agile" software moment. While it has fallen out of favor with many practitioners, the core concepts it introduces (pair programming, embracing change, etc.) and the analogies it makes are timeless in my opinion.
+
+* [Mythical Man Month](https://www.amazon.com/gp/product/0201835959/ref=as_li_tl?ie=UTF8&camp=1789&creative=9325&creativeASIN=0201835959&linkCode=as2&tag=smouring-20&linkId=c713816592b08797a8b47efe30330047) - A definitive work on the realities of working on corporate projects and dealing with scheduling / estimating culture.
+
+Related to the Mythical Man Month would be this outstanding article by Paul Graham:
+
+* [Maker's Schedule Manager's Schedule](http://www.paulgraham.com/makersschedule.html) - This article helps make some peace between developers and managers when it comes to how you work and how you handle meetings.
+
+###### Recommended Training
+
+I do not have too many resources here yet. 
+
+The one recommendation I would have would be to invest in a [Lynda.com](lynda.com) membership as their tutorials and classes are outstanding.
+
+###### Objectives
+
+So here we go! The objectives are organized into sections and go in order of difficulty.
+
+Breadth is just as important as depth. So do not go to far into one section without stopping and moving into a different section.
+
+**Objective 1.1** - Install Python. Run Python from the Command Prompt (windows) or Terminal (mac). Print the phrase "Hello World!" to the command line.
+
+**Objective 2.1** - Install Java **SDK**. Add ```<java install directory>\bin``` to your PATH. Open Command Prompt (Windows) or Terminal (Mac), type "java -version" and confirm it runs ```java```.
+
+**Objective 2.2** - Write a simple Java program that prints "Hello World" to the screen. Save it to a text file, compile it, and run it from the command line.
+
+**Objective 2.3** - Write a simple Java program that uses a loop to print the numbers 1 through 10 to the screen. Save it to a text file, compile it, and run it from the command line.
+
+**Objective 2.4** - Update the program from before to skip odd numbers using an if-statement). Save it to a text file, compile it, and run it from the command line.
+
+**Objective 2.5** - Write a Java program to read in text from the command line and print it back out. Save it to a text file, compile it, and run it from the command line.
+
+**Objective 2.6** - Write a Java program to read in a number from the command line and print out the numbers from 1 to the number entered. Save it to a text file, compile it, and run it from the command line.
+
+**Objective 2.7** - Write a Java program to start the numbers 1 through 10 in a List data structure. Read in a number from the command line and print out "yes" if the number is in the List or "no" if it is not.
+
+**Objective 3.1** - Download and install ```git```. Run ```git``` from the command line.
+
+**Objective 3.2** - Create an empty repository. Add a file. Commit the file. Change the file and commit the change.
+
+**Objective 3.3** - Create an account on GitHub.com. Find a repository (any repository will do, but if you want, you can search for ```marlhammer``` to find my GitHub repositories) and clone it on your local computer.
+
+**Objective 3.4** - Create your own repository on GitHub. Clone it to your computer. Commit files.
+
+**Objective 4.1** - Write an HTML file that includes a block of JavaScript. The JavaScript should open an alert dialog with the words "Hello World!".
+
+**Objective 5.1** - Install an IDE (such as IntelliJ or Eclipse). Setup a new project in the IDE. Write a "Hello World!" program and run it from inside the IDE.
+
+**To be continued...**
+
+###### Contact
+
+Questions? Comments? Email me at smouring@sequoiainc.com!

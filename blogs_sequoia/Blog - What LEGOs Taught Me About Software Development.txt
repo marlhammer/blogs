@@ -1,0 +1,87 @@
+#### Introduction
+
+Many hours of my childhood was spent playing with LEGOs... I would build model after model, only to tear them apart and rebuild something new.
+
+My family had two large tubs filled to the brim with them. Some of them were inherited from as far back as my Dad's childhood, while others had been slowly accumulated from years of buying, building, and tearing down LEGO sets.
+
+Age eventually caught up with me, and my interest in LEGOs hibernated. But now, years later, I have three children of my own, and my oldest son is developing the same healthy fascination with the plastic blocks that I had.
+
+One night, as we dumped out our own LEGO bin onto the floor (a big which we had had inherited from my parents... some of these LEGOs are now third generation), old patterns and memories from early childhood started to filter back.
+
+As we built, I started to realize that many of the same principals that had emerged from building with LEGOs as a kid, were foundational to the software engineer that I had become as an adult.
+
+So, with the seeds of a blog post planted, I started writing down those principals that underpinned my LEGO construction and identifying how they drove my experiences as a software engineer.
+
+I share those with you as a fun way to look at software engineering and hope that you find this a useful and entertaining perspective!
+
+#### Start With The Right Piece
+
+Whenever I sat down to build a LEGO model, I would always start with a base piece. An inspiration. A platform to express the model on if you will. Often that would be how the model would come to mind in the first place. I would see a starting piece and think "Oh! I could put these on that... Add this... Put those there..." and off I was to a new LEGO model.
+
+In software engineering, the parallel is to evaluating a problem and fitting it to an initial design and technology platform. As a software engineer I see an initial problem and have an "Oh! I can start with this design pattern... And add this template... And use this library..." and off it goes.
+
+Your choice of an initial platform or technology shapes the subsequent software. You have to evaluate the problem and make sure you are making the right choice to start building it on. It is really hard to correct from a bad first choice.
+
+#### Build A Piece Library
+
+Both as a kid and as an adult, whenever I start working on a model, I comb through the pile of LEGOs and start picking out pieces that I think might be useful. I usually have a theme and a color scheme in mind... So I would only choose blocks that match that scheme. I would find decorative pieces that match my theme. At this point, I do not always have a clear plan for the final model (other than inspiration from my starting piece).
+
+As I would build I could draw on this pool of pieces to grow the model, and not rely on the luck of the draw or searching through the LEGO mound to get what I wanted.
+
+In software engineering, I liken this to your personal growth as a developer. Over time, you should develop your own set of techniques and patterns. You should squirrel away useful code from previous projects, or copy good code snippets others have written.
+
+Later, you can draw on this reservoir for future projects and use the bits the fit the best to improve future projects.
+
+#### Find The Right Pieces
+
+As I was building, I followed the standard brick work "overlap" method to ensure my models were strong. (In fact, I used to drop test them on the kitchen floor when I was done with a model, much to the annoyance of my Mom...)
+
+I learned it was important to use the right pieces. If you had a 4-by-2 space left, search for a 4-by-2 brick. Don't use two 2-by-2 bricks or some other off kilter combination. It would weaken the structure and later might force design compromises. Searching for the right piece was worth the effort in the long run.
+
+I liken this to software engineering and the "broken window" theorem. Write your code right the first time, even if it takes longer. The extra effort to refactor some code or incorporate a good use of a design pattern instead of a quick hack is worth the investment to maintain the structure of your code.
+
+Like searching for the right brick, engineering the right solution takes time up front, but saves time in the long run by giving you a solid base to build from.
+
+#### Use Fewest Pieces Possible
+
+Just like it is important to use the _right_ pieces (or the ones the fit the best), it is also important to use the _fewest_ pieces possible.
+
+I saw too many models fail my drop test, because I had choose to stack plates on each other instead of finding a brick, or because I had use many small bricks instead of fewer large bricks.
+
+The analogy to software engineering for more is that more is less. The fewer moving parts you have, the fewer third party libraries you utilize, the fewer frameworks you rely on, all reduces the brittleness of your code and the likelihood that your software design (like a LEGO model) will break under stress.
+
+Adopt a minimalist aesthetic. Even if it takes more time to engineer a simpler elegant solution instead of dropping in a third party library, it gives your code more resiliency in the long run.
+
+#### Add The Decorations Last
+
+During my initial combing through the LEGO pile, I would come across lots of interesting decoration pieces. Unlike my Dad's generation, my generation (and even more so my son's) has a wealth of antennas, disks, articulated claws, safes, seawood sculptures, crystal formations, and hundreds of other decorative doodads to choose from. Sometimes I would come across some particularly interesting piece of flair and want to stick it right on the model.
+
+Premature decoration without building a solid foundation leads to a weak design. Just like in software engineering, you have to balance complexity and flexibility. Sure, you could add some fancy bytecode weaving library to do logging, a hot new framework for auditing, and throw in the latest web framework for the front end for good measure, but your cobweb design will lack structural integrity.
+
+Early on in the design of a system (or LEGO model) save the decorations for later when you have a stable design that is a good fit to the problem. Resist the urge to play with the bells and whistles until you have established a cohesive and solid design as a foundation.
+
+#### Don't Limit Yourself
+
+When I was a little kid, the models I built were small. No doubt they seemed big to me, but they never exceeded a certain average size. As I got older, my models got larger. I have noticed the same trend with my son. At first his models were little more than two bricks stuck together with a minifigure on top. Now they are more complex with a dozen or twenty blocks, moving parts, etc.
+
+When I was a kid, I did not consciously limit the size of my models. It was just all the scope and size I knew how to do.
+
+As a software engineer, I increasingly find myself in the same position, operating under self imposed limitations. Its not something I even realize I am doing.
+
+It can take many forms... From always sticking with the same technology choices because they are familiar, to tackling the same problems with the same solutions, to dismissing other technologies or approaches because I assume the problems they are trying to solve are the same as ones I already know how to solve.
+
+In either case, building LEGOs or writing software, you should try to be more cognizant of the self imposed limitations you are operating under and push yourself to go beyond your boundaries or comfort zone.
+
+#### Don't Be Afraid To Rebuild
+
+It is not a good feeling. That feeling that you have gone down a wrong path. Things are not lining up. Things are breaking. Nothing fits just right any more. Cruft is building up as you have to work around prior decisions.
+
+I remember that feeling as a kid building LEGOs, and I feel it now as an adult when I am writing software. Sometimes you make a wrong decision. It might even have been a good decision at the time... But now things have now changed. You go down a path that just does not work out.
+
+When I felt that as kid, I would start to tear off blocks. Its harder as an adult, because you have an ego (and coworkers) that make it hard to back track. But back tracking is the right decision. Tearing off the blocks (or the lines of code) that don't fit and trying a fresh approach makes for a strong design (or LEGO model) that will stand the test of time.
+
+#### Wrap Up
+
+This blog might have just been a bit of nostalgic reminiscing, but I hope it was a useful illustration of good software development practices in a memorable format!
+
+Questions? Comments? Email me at smouring@sequoiainc.com!

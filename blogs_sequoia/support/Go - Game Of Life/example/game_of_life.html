@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<!-- saved from url=(0035)http://www.bitstorm.org/gameoflife/ -->
+<html lang="en"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    <title>John Conway's Game of Life</title>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <link title="Main" rel="stylesheet" type="text/css" href="./game_of_life_files/style.css">
+    <script src="./game_of_life_files/ga.js"></script>
+    <script src="./game_of_life_files/ca-pub-2050318500162917.js"></script>
+    <script src="./game_of_life_files/mclass-min.js"></script>
+    <script src="./game_of_life_files/miq-min.js"></script>
+    <script src="./game_of_life_files/gameoflife.js"></script>
+</head>
+<body>
+
+<div class="body">
+
+<h3>The Simulation</h3>
+
+    <div id="canvas-container">
+        <div id="canvas-div">
+			<!-- <canvas width="803" height="506"></canvas> -->
+        </div>
+
+        <form>
+            <select id="shapes">
+            <option>Clear</option><option>Glider</option><option>Small Exploder</option><option>Exploder</option><option>10 Cell Row</option><option>Lightweight spaceship</option><option>Tumbler</option><option>Gosper Glider Gun</option></select>
+            <input id="next" type="button" value="Next">
+            <input id="start" type="button" value="Start">
+            <img src="./game_of_life_files/speeddial.svg" alt="" width="20" height="20">
+            <input id="speed" type="range" min="10" max="500" step="49" value="10" title="speed dial">
+            <img src="./game_of_life_files/grid.svg" alt="" width="20" height="20">
+            <input id="size" type="range" min="2" max="11" value="2" title="grid size">
+            <label id="generation">0</label>
+        </form>
+    </div>
+
+<h3>The Rules</h3>
+
+<dl>
+<dt><b>For a space that is 'populated':</b>
+</dt><dd>Each cell with one or no neighbors dies, as if by solitude.
+</dd><dd>Each cell with four or more neighbors dies, as if by overpopulation.
+</dd><dd>Each cell with two or three neighbors survives.
+</dd><dt><b>For a space that is 'empty' or 'unpopulated'</b>
+</dt><dd>Each cell with three neighbors becomes populated.
+</dd></dl>
+
+</body></html>

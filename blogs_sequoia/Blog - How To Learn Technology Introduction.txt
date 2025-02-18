@@ -1,0 +1,101 @@
+###### Introduction
+
+"How do I become a programmer?"
+
+Several people have asked me this question or some variant of it recently. As a professional programmer you would think it would be an easy question... 
+
+But it isn't.
+
+As a programmer, I rely on a whole series of experiences and sources of information that collectively have shaped my career over a number of years. Career and life experiences have created a latent knowledge bank that I implicitly draw from as I learn new things. Trying to distill that down into a "curriculum" that makes sense to someone who is starting completely fresh is very, very hard. 
+
+I am not saying that you need years of experience to be a programmer...
+
+But I am saying that just typing "how do I program?" into Google does not get you very far. (In fact, getting a Master's Degree in Computer Science does not get you very far either... but that is another topic!) There is a flood of information, but not often a real, cohesive, comprehensive direction for a person to digest it all. Many guides and tutorials are either too generic or too narrow or lack comprehensiveness.
+
+Self study can be challenging too because it is easy to lose direction, take on too much, or eventually lose interest because you are tired of trying to keep your head above water.
+
+So I wanted to try to do something about that with this blog post series.
+
+My goal is not to somehow record all the things you need to learn in a given topic, but instead, give you a framework that can guide your learning, keep it on track, and make sure it is comprehensive enough to be useful when you want to apply the given skill in your profession.
+
+I am starting with two posts: How To Learn AWS and How To Learn Programming. These will be living documents that will be updated over the course of the next several weeks (months? years?) 
+
+###### Approach
+
+Everyone has a different learning style. Spend some time thinking about yours. Do you learn, remember, and retain information well from reading a book? Listening to a coworker explain some? Attending a class or lecture? Think about times when you have tried to learn something and it did not succeed. Why did it not succeed?
+
+Learning is a complex and comprehensive experience, and any advice that can be given on how to learn should come with the usual "your mileage may vary" caveat.
+
+I spent some time thinking about how I learn (and also how I do not learn!) Although I have my own learning style (verbal / conversation based), there have been some recurring principals / lesson learned that I think cut across learning styles. These are:
+
+* Ownership
+* Scale
+* Direction
+* Struggle
+
+###### Ownership
+
+This is an important one and one that I failed at a lot early on in my life 
+
+Information is much more meaningful if you *own* it. You need a motivation that causes you to want to internalize it. 
+
+Closely related to this is the concept of having some tangible work product that you produce from your learning that not only acts as a concrete measure of progress but also a reference / reminder for the future. (I cannot tell you how often I have to re-read my own blogs to remember how I did something!)
+
+This lesson was illustrated to me very concretely when I first tried to learn Python.
+
+I started out with some tutorials and syntax guides and started playing with Python code in the Python interpreter. I quickly lost interest and stopped making progress. Why? ~~I am lazy.~~ I had nothing invested in a tutorial. No motivation to succeed at a tutorial. No ownership.
+
+The second time I tried to learn Python, I had a much more concrete goal. I wanted to build a [temperature / humidity sensor for my basement home brewing](https://blogs.sequoiainc.com/raspberry-pi-home-brew-temperature-monitor/) efforts. This changed the way I approached learning. 
+
+I had a motivation, a driver to push me to learn new Python topics because I wanted to have that sensor working. I needed to figure out if-statements, then loops, then how to make HTTP calls, then error handling, and so on. When I was done, I had a complete / working project that was a measure of my accomplishments and reference point for future work.
+
+If I had just done some tutorials, it would be easy to forget what I learned. But a finished project was something that I could refer back to in the future.
+
+My take away for this is that you should, as much as possible, try to structure your learning around something you care about. Unless you are a deeply curious intellectual, just learning a topic "because" makes it hard to follow through with. Pick a project you care about and use that as a driver for learning.
+
+In the subsequent blog posts, I will try to lay out learning objectives in a way that you can use them to build a project that interests you and therefore get that ownership and persistence. 
+
+###### Scale
+
+Another mistake I often make is trying to tackle more than I can handle. Learning is hard, and trying to learn everything all at once will fail.
+
+If you want to learn to program, and sit down to try to write the next World Of Warcraft, you are going to fail. Failure is good (it is feedback), but too much can be discouraging and can dis-incentivize you from learning.
+
+When you are learning it is important to build progressively. Set small, well defined objectives. Accomplish those objectives, feel good about your  success, and use that good feeling / confidence to progress to the next objective.
+
+You cannot just sit down in an afternoon and learn to be a good programmer. But you can sit down and learn the basics of Git. You can sit down another afternoon, and learn how to write a "Hello World!" program. On yet another afternoon you can sit down and learn how to use the basics of an IDE. And so on...
+
+In the subsequent blog posts, my approach is to take complex topics (programming, AWS) and break them into small, progressive objectives. Each objective is its own challenge, and some are hard, but once you achieve each objective you get that burst of confidence from the success that you can use to tackle the next objective, instead of getting worn down by the weight of learning everything all at once.
+
+###### Direction
+
+This is a simple one. A topic like "programming" is an incredible broad and diverse field. When you are just starting out it can be hard to know what is important to learn, what is not, and what choices there are to make.
+
+I cannot presume to cover all of this in a blog post, but my intent is to give you at least some a basic template, a "path" if you will. Not all paths. Not all possibilities. But a path. A possibility. Some stacks in the ground that you can anchor yourself with. Something so that you can bootstrap your knowledge of a topic and at the end, have a much better idea of where you want to go from there.
+
+###### Struggle
+
+After having sat through a number of college classes, training classes, and labs, one conclusion I have drawn is that the act of struggling is important.
+
+I have sat through some outstanding training classes, only to come to the lab book and find it is a painstaking, screenshot laden, step by step, copy and paste exercise. With few exceptions, this is a terrible way to learn. I retain almost nothing from an exercise like that, mostly because my brain is focusing all its energy on reproducing the steps correctly instead of internalizing the steps themselves and *why* the steps are needed.
+
+It is counter intuitive, but early on, this kind of hand holding is actually bad. To really learn something, you need to struggle with it. You need to poke it, prod it, Google it. Try something. Fail. Trying something else. Fail. Try something else still. Succeed! Yes! Advance. This interactive process stimulates your brain and internalizes information far more efficiently than rote repetition (with all [due respect to Mr. Miyagi](https://www.youtube.com/watch?v=fULNUr0rvEc) that is!) 
+
+Laying out the process step by step does not help a person learn that process. The process of discovering each step, going to multiple sources to find the next step, and going through a couple failures before succeeding forms a lot more neurons.
+
+In the subsequent blog posts, I will be outlining objectives without step by step instructions. This encourages you to struggle with each objective and *really* learn it. The objectives are small enough though that (hopefully!) you will not struggle too much and not be able to advance!
+
+###### Future Blog Structure
+
+The following blog posts in this series will pick a major topic, and break down the skills needed to master that topic into a branching series of objectives. Each objective will have a reasonable scope, and clear success criteria. They will get progressively more involved, but the goal is breadth not depth.
+
+I will also try to include recommended background reading and advice for pursuing formal training / certifications if relevant. 
+
+I hope that this is helpful to folks wanting to learn these topics! Please provide feedback early and often! I intend for the subsequent blog posts to be updated frequently and improve over time.
+
+Questions? Comments? Email me smouring@sequoiainc.com!
+
+###### Topics
+
+* [How To Learn Programming](https://blogs.sequoiainc.com/how-to-learn-technology-programming/)
+* [How To Learn AWS](https://blogs.sequoiainc.com/how-to-learn-technology-aws/)

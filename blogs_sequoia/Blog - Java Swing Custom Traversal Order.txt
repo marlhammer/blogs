@@ -1,0 +1,134 @@
+<p>Recently I have had the opportunity to dust off my Java Swing skills and work on a thick client application for my customer. Coming back to Swing after several years of web applications and big data back ends, I have been surprised by how much complexity there is under the covers of Swing! There is a lot of expressiveness and power that I think is often overlooked due to the many bad examples of Swing most developers have encountered.</p>
+
+<p>I want to write a series of blogs detailing my adventures with Swing and hopefully leave behind a trail of code and interesting examples that will help those who are trying sharpen their Swing skills (or at least survive coding a desktop application!) make better use of Swing.</p>
+
+<p>&nbsp;</p>
+
+<p>So my very first Swing challenge was to impose a left to right, top to bottom &quot;traversal order&quot; on a three different forms in the desktop application I was working on. (A &quot;traversal order&quot; is the order that components receive focus in an application. Focus is granted when a component is clicked on, but can also be cycled manually via the keyboard such as by using the Tab key to navigate fields in a form.)</p>
+
+<p>By default Swing traverses every eligible (meaning every visible, enabled, viewable, etc.) Component in a Container in the order it was added to the Container. Now it is often the case that coding practices and UI design conflict when it comes to adding components to a Container! Components are seldom instantiated and added in your code in the same order you want your users to navigate them. Hence the need arises for imposing acustom traversal order.</p>
+
+<p>Enter the <tt>FocusTraversalPolicy</tt> object. You can extend this class and imposes a ordering of your own design onto the components in a container.</p>
+
+<p>A custom <tt>FocusTraversalPolicy</tt> is added to a container via the <tt>setFocusTraversalPolicy()</tt> method on the <tt>Container</tt> object.</p>
+
+<p>&nbsp;</p>
+
+<div style="background:#eee; border:1px solid #ccc; padding:5px 10px"><tt>JPanel mainPanel = new Panel();</tt></div>
+
+<div style="background:#eee; border:1px solid #ccc; padding:5px 10px"><tt>...</tt></div>
+
+<div style="background:#eee; border:1px solid #ccc; padding:5px 10px"><tt>CustomFocusTraversalPolicy policy = new CustomFocusTraversalPolicy();</tt></div>
+
+<div style="background:#eee; border:1px solid #ccc; padding:5px 10px"><tt>mainPanel.setFocusTraversalPolicy(policy);</tt></div>
+
+<p>&nbsp;</p>
+
+<p>The interface defined by <tt>FocusTraversalPolicy </tt>is simple but expressive. There are five methods:</p>
+
+<ul>
+    <li><tt>getDefaultComponent()</tt></li>
+    <li><tt>getFirstComponent() </tt></li>
+    <li><tt>getLastComponent() </tt></li>
+    <li><tt>getComponentBefore()</tt></li>
+    <li><tt>getComponentAfter()</tt></li>
+</ul>
+
+<p>The traversal order is defined in relationship to each component. You do not <strong>have</strong> to impose a linear order. Each component can make a decision about what component should receive focus next (possibly dynamically based on other conditions such as the state of other Components).</p>
+
+<p>Below is a simple implementation of <tt>FocusTraversalPolicy</tt> as an example:</p>
+
+<p>&nbsp;</p>
+
+<div style="background:#eee; border:1px solid #ccc; padding:5px 10px"><tt>import java.awt.Component;<br />
+import java.awt.Container;<br />
+import java.awt.FocusTraversalPolicy;</tt></div>
+
+<div style="background:#eee; border:1px solid #ccc; padding:5px 10px"><tt>import java.util.ArrayList;</tt></div>
+
+<div style="background:#eee; border:1px solid #ccc; padding:5px 10px">&nbsp;</div>
+
+<div style="background:#eee; border:1px solid #ccc; padding:5px 10px"><tt>public class CustomFocusTraversalPolicy extends FocusTraversalPolicy {</tt></div>
+
+<div style="background:#eee; border:1px solid #ccc; padding:5px 10px"><tt>&nbsp;&nbsp; &nbsp;private ArrayList&lt;Component&gt; order;</tt></div>
+
+<div style="background:#eee; border:1px solid #ccc; padding:5px 10px"><tt>&nbsp;&nbsp; &nbsp;public CustomFocusTraversalPolicy(ArrayList&lt;Component&gt; order) {<br />
+&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;this.order = order;<br />
+&nbsp;&nbsp; &nbsp;}</tt></div>
+
+<div style="background:#eee; border:1px solid #ccc; padding:5px 10px">&nbsp;</div>
+
+<div style="background:#eee; border:1px solid #ccc; padding:5px 10px"><tt>&nbsp;&nbsp; &nbsp;@Override<br />
+&nbsp;&nbsp; &nbsp;public Component getComponentAfter(Container container, Component component) {<br />
+&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;int index = (order.indexOf(component) + 1) % order.size();<br />
+&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;Component after = order.get(index);<br />
+&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;while (index &lt; order.size() &amp;&amp; !(after.isEnabled() &amp;&amp; after.isVisible())) {<br />
+&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;index++;<br />
+&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;after = order.get(index);<br />
+&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;}<br />
+&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;return after;<br />
+&nbsp;&nbsp; &nbsp;}</tt></div>
+
+<div style="background:#eee; border:1px solid #ccc; padding:5px 10px">&nbsp;</div>
+
+<div style="background:#eee; border:1px solid #ccc; padding:5px 10px"><tt>&nbsp;&nbsp; &nbsp;@Override<br />
+&nbsp;&nbsp; &nbsp;public Component getComponentBefore(Container container, Component component) {<br />
+&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;int index = (order.indexOf(component) - 1);<br />
+&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;if (index &lt; 0) {<br />
+&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;index = order.size() - 1;<br />
+&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;}<br />
+&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;Component before = order.get(index);<br />
+&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;while (index &gt;= 0 &amp;&amp; !(before.isEnabled() &amp;&amp; before.isVisible())) {<br />
+&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;index --;<br />
+&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;before = order.get(index);<br />
+&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;}<br />
+&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;return before;<br />
+&nbsp;&nbsp; &nbsp;}</tt></div>
+
+<div style="background:#eee; border:1px solid #ccc; padding:5px 10px">&nbsp;</div>
+
+<div style="background:#eee; border:1px solid #ccc; padding:5px 10px"><tt>&nbsp;&nbsp; &nbsp;@Override<br />
+&nbsp;&nbsp; &nbsp;public Component getFirstComponent(Container container) {<br />
+&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;int index = 0;<br />
+&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;Component first = order.get(index);<br />
+&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;while (index &lt; order.size() &amp;&amp; !(first.isEnabled() &amp;&amp; first.isVisible())) {<br />
+&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;index++;<br />
+&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;first = order.get(index);<br />
+&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;}<br />
+&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;return first;<br />
+&nbsp;&nbsp; &nbsp;}</tt></div>
+
+<div style="background:#eee; border:1px solid #ccc; padding:5px 10px">&nbsp;</div>
+
+<div style="background:#eee; border:1px solid #ccc; padding:5px 10px"><tt>&nbsp;&nbsp; &nbsp;@Override<br />
+&nbsp;&nbsp; &nbsp;public Component getLastComponent(Container container) {<br />
+&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;int index = order.size() - 1;<br />
+&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;Component last = order.get(index);<br />
+&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;while (index &gt;= 0 &amp;&amp; !(last.isEnabled() &amp;&amp; last.isVisible())) {<br />
+&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;index--;<br />
+&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;last = order.get(index);<br />
+&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;}<br />
+&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;return last;<br />
+&nbsp;&nbsp; &nbsp;}</tt></div>
+
+<div style="background:#eee; border:1px solid #ccc; padding:5px 10px">&nbsp;</div>
+
+<div style="background:#eee; border:1px solid #ccc; padding:5px 10px"><tt>&nbsp;&nbsp; &nbsp;@Override<br />
+&nbsp;&nbsp; &nbsp;public Component getDefaultComponent(Container container) {<br />
+&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;return getFirstComponent(container);<br />
+&nbsp;&nbsp; &nbsp;}<br />
+}</tt></div>
+
+<p><em>Code is available at: <a href="https://gist.github.com/marlhammer/6348987#file-customfocustraversalpolicy-java">https://gist.github.com/marlhammer/6348987#file-customfocustraversalpolicy-java</a></em></p>
+
+<p>&nbsp;</p>
+
+<p>This is simple focus traversal policy takes a predefined list of components and simply traverses back and forth through the list accounting for disabled or invisible components along the way. (Note: Yes. There is the possibility of an infinite loop if all components in the list are disabled or invisible... So please do not do that.)</p>
+
+<p>For a simple case where there is not a significant amount of dynamic Component manipulation or a complex hierarchy of Containers this policy works extremely well and is easy to maintain. More advanced techniques are possible and I recommend you start here: <a href="http://docs.oracle.com/javase/tutorial/uiswing/misc/focus.html#customFocusTraversal">http://docs.oracle.com/javase/tutorial/uiswing/misc/focus.html#customFocusTraversal</a> if your needs exceed what can be accomplished with the simple code above.</p>
+
+<p>&nbsp;</p>
+
+<p>Questions? Comments? Email me at: smouring@sequoiainc.com</p>
+
+<p>Happy coding!</p>

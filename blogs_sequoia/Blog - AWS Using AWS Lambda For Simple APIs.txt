@@ -1,0 +1,129 @@
+##### Introduction
+
+*Updated 7/30/2018. Originally published 08/05/2016.*
+
+Even before the [serverless](https://en.wikipedia.org/wiki/Serverless_computing) paradigm became state of the art, AWS Lambda piqued my interest. The idea of uploading a self-contained snippet of code that can be invoked from many different contexts in the AWS ecosystem is so elegant and has so much interesting potential!
+
+A common use case that I now have for AWS Lambda is to encapsulate some dynamic functionality that I want to embed on a website. 
+
+Natively it is hard to invoke a AWS Lambda function directly via a HTTP request (not impossible, but high impedance). However, AWS API Gateway provides the ability to define HTTP/HTTPS API endpoints and those endpoints can be implemented by several different sources including internal HTTP services, S3 buckets, and, of course, AWS Lambda functions.
+
+The power of serverless is that, in the past, if you wanted to execute business logic on the server side, you had to develop a complete web application, provision an instance, and deploy a web stack of some kind. In cases where the business logic was relatively simple, this was overkill.
+
+With AWS Lambda and other serverless technologies you can easily write your business logic (and even integrate into other backend AWS services like DynamoDB or S3), and point an API Gateway endpoint to it. This gives you, essentially, an extremely simple web server that provides dynamic business logic without the overhead of provisioning a web stack.
+
+My goal with this blog is to illustrate this process with a simple example. I have a scratch pad website hosted on GitHub Pages ([www.marlthehammer.com](http://www.marlthehammer.com)) where I decided to embed a "quote of the day" on that page. 
+
+Let's break down the pieces needed to achieve this.
+
+#### AWS Lambda - A Simple Example
+
+Lambda can support code written in several languages, including Python, NodeJS, Go, .NET, and Java.
+
+To create a function you go to the Lambda console and select the "Create function" button (or "Get Started" if this is your first Lambda function.)
+
+On the first screen, you can choose to build a function from scratch or use an existing blueprint. For our purposes, we will select the "from scratch" option.
+
+*NOTE: Blueprints are just pre-written Lambda functions that have boilerplate code for various purposes already provided. For example, there is a blueprint for a Lambda function that retrieves data from DynamoDB. It provides all the boilerplate code to access DynamoDB, leaving the schema details and return format for you to fill in.*
+
+You can chose a name and runtime for your function. Our example function we will be using the Python 3.6 runtime. 
+
+You will also need to choose an execution role. This is an IAM Role that grants the Lambda subsystem permission to access the resources in your account necessary to run the function. For now you can allow the Lambda wizard to create one on your behalf (unless you already have one created for an earlier function.)
+
+Click the "Create function" button to create your function.
+
+The next screen contains all the many configuration options that control how your Lambda function runs. You can leave the defaults as they are and revisit them later. The only thing we want to change is the Function Code section.
+
+Make sure that the "Code entry type" dropdown is set to the "Edit code inline" option. The source code for my quote of the day function is very simple and is as follows:
+
+```
+import random
+
+def lambda_handler(event, context):
+    
+    quotes = [
+        'I pray for peace but I am ready for war.',
+        'Everybody wants to change the world. But one thing is for certain... Nobody wants to change themselves.',
+        'Know what you know and know what you don\'t know',
+        '"What keeps you awake at night?" "Nothing. I keep other people awake at night."',
+        'Ready, fire, aim...',
+        'You have to know why things work the way they do, not just how they work.',
+        'Needless consistency is the hobgoblin of small minds.'
+    ]
+
+    return random.choice(quotes)
+```
+
+Just a simple Python function that returns a random quote from the array.
+
+Click "Save" to save your function.
+
+You can test your function by clicking the "Test" button. You will need to create a "Test Event" to send the function. Since our function does not accept inputs you can either send a blank event or use the default "Hello World" event. 
+
+If your event tests successfully you are ready for the next step!
+
+##### API Gateway
+
+Now that we have a Lambda function we are ready to create an API in API Gateway that will invoke that function.
+
+To get started, go to API Gateway console.
+
+Cick the "Create API" button (or "Get Started" if this is your first API.) 
+
+In the Create API screen you want to select "New API" from the radio group across the top and enter a Name and Description for your API below that. For Endpoint Type, select "Edge Optimized" from the list.
+
+Click "Create API" to create your API.
+
+You are then taken to the API editor. This is a bit complicated, and takes some time before it becomes familiar. Essentially you are creating one or more URLs (resources) that have one or more HTTP Method mappings (methods) each of which are backed by an implementation.
+
+By default, API Gateway creates a `/` resource for us representing the root of the API. You can create children of this root if you choose (such as `/quote`). For now though we will keep it simple and just use the root..
+
+Next we need to create a method for this resource. Click the "Create Method" option from the "Actions" menu. The new method will be added to the tree structure on the left with a blank type. Select `GET` as the HTTP action and save the method by clicking the check mark icon. 
+
+If you click on the `GET` method under the `/` resource, then you get to specify the implementation of the method. In our case we will select "Lambda function", enter the function name, and click the "Save" button.
+
+We need to do one more thing to make this API *embeddable* on our website. By default browsers will not allow the contents of a website to be embedded on another unless that website allows it by setting CORS headers. (Full disclosure, this is a simplification of a much more complex issue.) 
+
+We need to enable CORS on our API by click on the `/` resource, then clicking "Enable CORS" option from the "Actions" menu. You can accept the defaults for the prompt that appears. When the CORS wizard is complete it will have added an `OPTIONS` method to your resource.
+
+Finally, you can now click "Deploy API" option from the "Actions" menu. This will ask you to create a "stage" to deploy to.
+
+API Gateway organizes its deployments into "stages" where each stage is a copy of the API managed by the API Gateway. A large scale application might have `dev`, `test`, and `prod` stages for  example. Changes to the API can be deployed sequentially to different stages in accordance with a project workflow. 
+
+In our example, a single stage is sufficient. You can name it whatever you would like.
+
+You can now click on the newly created stage and it will give you an Amazon generated Invoke URL which forms the root of your API. In our case, clicking this Invoke URL shuld render a quote in our process, indicating success!
+
+##### API Gateway - Custom Domain Name
+
+If you would like to take this a step further, you can associate a custom domain name to your API using Route 53. 
+
+*NOTE: I will assume that you have already registered a custom domain name in Route 53 and created an HTTPS certificate in ACM.*
+
+To add a custom domain you need to click on the Custom Domain Names tab on the API Gateway console. Then click on the "Create Custom Domain Name" button.
+
+Enter the domain name, select Edge Optimized, and select your ACM certificate from the list.
+
+*NOTE: You do not need to limit yourself to only top level domains. You can specify a sub-domain instead. For example, I mapped `quotes.stephenmouring.name` to my API.*
+
+Once the Custom Domain Name is created, you can click "Show Base Path Mappings" link, then the "Edit" link.
+
+You can specify a URL path to map the API too (such as `/quotes`). In my case, I left the path blank which maps the custom domain to `/` by default. Select your API and the stage that you created above.
+
+*NOTE: There is a tremendous amount of flexibility here. You can map multiple APIs to the same domain (or sub-domain) by specifying different base path mappings for each stage. For example `example.com` for production, `example.com/test` for test, and so forth.*
+
+Click the "Save" link.
+
+*NOTE: API Gateway will generate an internal Cloud Front distribution to distribute your API definition. This can take 30-60 minutes to complete, so it will be some time before your API is available globally.*
+
+On your newly created Custom Domain Name you will see a "Target Domain Name" field. Copy this value.
+
+Now you need to switch to the Route 53 console. Add a Record Set to the Hosted Zone of the domain name you used in API Gateway. You will want to specify an `A` record, set Alias to "Yes", and paste "Target Domain Name" from the prior step as the Alias Target.
+
+This completes the link between your custom domain name and the internal Cloud Front distribution that API Gateway created for you! Your Lambda should now be invokable by your custom domain name.
+
+#### Conclusion
+
+Congratulations! You now have an HTTP/HTTPS accessible endpoint that is backed by an AWS Lambda function but can be rendered seamlessly in a website (with or without a custom domain name!)
+
+Questions? Comments? Email me at smouring@sequoiainc.com!

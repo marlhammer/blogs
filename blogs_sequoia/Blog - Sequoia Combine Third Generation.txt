@@ -1,0 +1,63 @@
+#### Combine
+
+It has been almost a year since Sequoia released the [first version of Sequoia Combine](https://blogs.sequoiainc.com/sequoia-combine-technical-overview/)! In that time we have made strides in improving both the integrity of the C2S simulation and adding supporting tools to increase the speed and ease with which software testing and development can be conducted in Combine.
+
+Over the last few months, based on extensive customer feedback, and the continual accumulation of hands on experience, the Combine team has been working on the third generation of the Combine platform. We are now pleased to announce the release of Sequoia Combine 3rd Gen!
+
+#### Features
+
+Let's talk about the new core features and enhancements that make up the third generation architecture.
+
+###### TAP Landing Page
+
+A key component of the Combine architecture is TAP, the equivalent of C2S's CAP software that provides authentication into the environment based on PKI security certificates. 
+
+Early versions of Combine utilized a simple URL / URL parameter scheme to simulate CAP authentication. Users were directly redirected to the AWS Console of their Combine account from a TAP URL. 
+
+With the addition of support for multiple accounts and multiple roles per account, Combine 3rd Gen has debuted a new TAP Landing Page. This brings TAP's user experience fully into line with the user experience of CAP in C2S. 
+
+After accessing the TAP URL, users are directed to a landing page that lists the accesses they have based on their PKI certificate. Users can select from this list and then be redirected to the AWS Console of that Combine account under the selected Role.
+
+This lays the groundwork for further enhancements (such as alternate forms of credential delivery, better documentation, and user administration) which are now being worked as features for future deliveries.
+
+###### Violations UI
+
+An often requested feature of Combine was for a dashboard that could report potential migration issues and help direct software testing efforts. We are pleased to announce the release of the Combine Violations UI (VUI) to address this need!
+
+Instrumentation has been added to each Combine account to collect network and security logs and extract occurrences of specific "violations": occasions where software is trying to cross boundaries put in place by Combine to simulate C2S. These violations are now categorized and displayed in the Combine VUI dashboard.
+
+This enables faster troubleshooting for compatibility issues detected in Combine, and streamlines the process for software testing!
+
+###### TAPTrails API
+
+CAP's capabilities in C2S extend beyond mere authentication and include auditing and user management functions. With the release of Combine 3rd Gen, TAP has been extended to include a new API family called TAPTrails which mirrors relevant parts of CAP's CAPTrails API family in C2S.
+
+TAPTrails includes audit information about which users have logged in under what roles. This information, combined with in-account CloudTrail data, provides a complete audit picture of your Combine account and enables security / auditing focused applications to develop against the same APIs available in CAP.
+
+#### Enhancements
+
+We have discussed the new core features of Combine 3rd Gen, but beyond these there have been some significant improvements to existing features that make the Combine platform a better simulation and give it a better user experience.
+
+###### Full User / Role Configuration
+
+The prior generation of Combine added the ability to do cross role, cross account authentication. The 3rd Gen architecture builds on this by providing the ability to fully manage user role assignment (prior to Combine 3rd Gen, any user could use any role / account). This robust system fully simulates the capabilities available through CAP and enables more advanced testing and integration scenarios.
+
+###### Full Role Simulation
+
+The prior generations of Combine simulated only the core developer role available in C2S. This has now been expanded to simulate *all* roles provided by default in C2S. 
+
+In addition, a deep dive audit was made between the Role definitions in C2S and those in Combine, and a large number of improvements have been made. This increases the fidelity of the simulation and improves the confidence users can have in the Combine testing process.
+
+###### API Improvements
+
+Several changes have been made to the existing TAP API to increase the fidelity of the simulation. This includes adding full support for all optional parameters offered by equivalent CAP APIs, adding identical error codes and schema identical error JSON responses, adding identical response headers, and changing the base URL schema to match CAP APIs exactly. 
+
+This increase in simulation fidelity will enable more accurate testing and more advanced testing and integration scenarios.
+
+###### API Documentation
+
+The Combine team has added documentation and examples for the TAP APIs and integrated them into the new TAP Landing Page. This improvement in documentation should enable developers to more readily develop integration code and demystify the CAP integration problem.
+
+#### Conclusion
+
+The Combine team is excited to debut Combine 3rd Gen! To find out more about Combine or to get a price quote, please see [our website](http://www.sequoiacombine.com/)!

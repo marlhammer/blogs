@@ -1,0 +1,188 @@
+#### Introduction
+
+In the [first part](https://blogs.sequoiainc.com/blockchain-dev-part-1-full-ethereum-node-in-aws/) of this blog series, we discussed how to build a full Ethereum node. This is foundational for writing and deploying the smart contracts that underpin a distributed application or DApp.
+
+However, in this configuration we are essentially running on the "production" version of the blockchain. It costs real Ether (which costs real money) to run smart contracts and it is fully available to the public. If we want to test and iterate on our smart contracts, we need a "test" environment. 
+
+*NOTE: Ethereum has several "test" versions of its blockchain. However,  these are still available to the public and are used for testing new features of the Ethereum platform itself and thus may include changes that are not yet compatible with the main network. Hence it can be desirable, for privacy and/or compatibility, to create your own private Ethereum blockchain on which to test your smart contracts.*
+
+This will not be a "clone", a "fork", or any sort of *copy* of the main Ethereum blockchain. This will be a new "empty" blockchain that uses the same underlying Ethereum platform but is private to your Ethereum node.
+
+This enables you to have a space where you can develop, test, and refine your smart contracts without having to do so publicly or incur any real cost.
+
+#### An Aside: Migrating A Blockchain
+
+If you followed the steps in [part one](https://blogs.sequoiainc.com/blockchain-dev-part-1-full-ethereum-node-in-aws/) you have a full Ethereum node already running. In that blog you configured the node to store the blockchain in the `/data/blockchain` directory.
+
+For my purposes (primarily to save AWS utilization costs) I want to run my test blockchain on the same server as the main blockchain. To ensure the data for the two chains did not conflict, I needed to move the blockchain out of `/data/blockchain`.
+
+To do this, first stop your running `geth` node.
+
+```
+sudo systemctl stop geth  
+```
+
+Modify the `geth.service` file you created and change the `datadir` parameter in the `ExecStart` section to `/data/blockchain/main` instead of just `/data/blockchain`. 
+
+Reinstall the script as follows:
+
+```
+sudo cp ./geth.service /etc/systemd/system/geth.service  
+sudo systemctl daemon-reload  
+sudo systemctl enable geth.service  
+```
+
+Now go to `/data/blockchain`, create a `main` subdirectory and move all the other contents of `/data/blockchain` into `main`.
+
+Start the `geth` node:
+
+```
+sudo systemctl start geth  
+```
+
+Then verify that the `geth` node is running successfully:
+
+```
+sudo systemctl status geth  
+```
+
+Excellent! Next we will setup the test blockchain.
+
+#### Step 1: Genesis Block
+
+Each block in a blockchain is linked to the preceding block. In order for a new block to be added, there must be a prior block for it to reference. 
+
+Therefore to start a new blockchain, you as the blockchain creator need to provide a first block, or "genesis" block for the next block to use. 
+
+The genesis block contains crucial configuration that defines the behavior of your private blockchain. The genesis block is created using a JSON configuration file. Below is the example for our project:
+
+```
+{
+    "config": {  
+        "chainId": 1001, 
+        "homesteadBlock": 0,
+        "eip155Block": 0,
+        "eip158Block": 0
+    },
+    "difficulty": "0x400",
+    "gasLimit": "0x8000000",
+    "alloc": { 
+    }
+}
+```
+
+*NOTE: An exhaustive description of all the fields in the genesis configuration file is beyond the scope of this blog. An in depth description can be found [here](https://arvanaghi.com/blog/explaining-the-genesis-block-in-ethereum/).*
+
+There are a few important things to note:
+
+* The `chainId` should be unique for our private blockchain. I have chosen `1001` but you are free to chose whatever value you want. [Here](https://ethereum.stackexchange.com/questions/17051/how-to-select-a-network-id-or-is-there-a-list-of-network-ids) are some well known `chainId` values you should avoid.
+
+* The `difficulty` determines how hard it is to mine a block. This is important because you will be responsible for generating Ether on your private blockchain. This value should be low, allowing you to "mine" as much Ether as you want for use in testing your smart contracts.
+
+* The `gasLimit` determines the upper bound on how much Ether a smart contract can spend. In the main blockchain it serves as an "emergency brake" in the event a smart contract performs more computation than the owner expects (or is acting maliciously and attempting to trap a node in an infinite loop). In our example we set it high enough that it will not unduly limit the smart contracts we are testing.
+
+To continue creating our test blockchain, create a `genesis.json` file in the `/data/blockchain/test` directory on your server with the contents that were shown above.
+
+Next we will initialize the new test blockchain and start `geth`.
+
+#### Step 2: geth
+
+To actually create the test blockchain based on the genesis configuration file we created above, we need to run `geth init`.
+
+```
+geth init /data/blockchain/test/genesis.json --datadir /data/blockchain/test --identity "developer" 
+```
+
+Notice that we are referencing the `genesis.json` file we created. Also notice that we are specifying a `--datadir` to ensure the test blockchain is created on our large attached volume (as described in [part one](https://blogs.sequoiainc.com/blockchain-dev-part-1-full-ethereum-node-in-aws/) of this series).
+
+This will create the directories and files necessary to store the blockchain and initialize the genesis block based on the contents of the genesis configuration file.
+
+Once the new test blockchain has been initialized, you can start a new instance of `geth`. There are some considerations running a second copy of `geth` on the same server which we will discuss below.
+
+Here is the command to start the `geth` instance for our test blockchain:
+
+```
+nohup geth --datadir /data/blockchain/test --networkid 1001 --port 30304 --rpc --rpcaddr "0.0.0.0" --rpcport 5001 &
+```
+
+Some important things to notice about this command:
+
+* We are running this command via `nohup` and in the background via `&`. We could make it a service (like we did for the main blockchain in [part one](https://blogs.sequoiainc.com/blockchain-dev-part-1-full-ethereum-node-in-aws/) of this series) but in this case we will leave it up only when we need it for testing.
+
+* We set the `datadir` to the newly initialized data directory for our test blockchain.
+
+* We set the `networkid` to match what was defined in our genesis block.
+
+* We started `geth` on port `30304` via the `--port` parameter. The default port is `30303` and is already in use by our other `geth` instance that is running the main blockchain.
+
+* We started the RPC interface (using the `--rpc`, `--rpcaddr`, and `--rpcport` parameters) so we can interact with our test blockchain remotely. As above, notice that the `--rpcport` is set to `5001` instead of `5000` to avoid conflict with our other `geth` instance.
+
+You can attach to the command line of this new instance of `geth` using this command:
+
+```
+geth attach /data/blockchain/test/geth.ipc
+```
+
+Excellent! You now have a test blockchain running! 
+
+Next we will setup a new account on this test blockchain and mine some Ether so we are ready to test some smart contracts!
+
+#### Step 3: Account Setup / Mining
+
+To mine some "test Ether" so we can execute our smart contracts, we need to create a new user account on our node.
+
+```
+geth account new
+```
+
+This will prompt you for a password. When you are finished it will print out the hash of the newly created account.
+
+Now log onto the `geth` command line:
+
+```
+geth attach /data/blockchain/test/geth.ipc
+```
+
+You can see the accounts on your node via this command:
+
+```
+eth.accounts
+```
+
+We need to create some "Ether" on our test blockchain in order to test smart contracts. I put Ether in quotes because this Ether is only relevant to our test blockchain and is not related to the "real" Ether on the main blockchain.
+
+To generate Ether, we need to mine blocks on our test blockchain. To do this, first instruct your `geth` miner where to send the mining rewards by setting the miner's "etherbase" value:
+
+```
+miner.setEtherbase(eth.accounts[0])
+```
+
+*NOTE: This assumes you have only one account on your node. Hence the `eth.accounts[0]`. If you have multiple accounts you can either specify a different index into the `accounts` array or enter the desired account address as a string.*
+
+Now you can start your miner!
+
+```
+miner.start()
+```
+
+Wait for a 30 seconds or so, then stop the miner:
+
+```
+miner.stop()
+```
+
+Now you can check your account balance:
+
+```
+eth.getBalance(eth.accounts[0])
+```
+
+*NOTE: As before, you specify a string value to `getBalance()` instead if you prefer.*
+
+If you see a non zero value here, you have succeeded! 
+
+#### Conclusion
+
+Congratulations! You have a fully functioning test blockchain working in parallel to the main blockchain on your Ethereum node!
+
+Questions? Comments? Email me at smouring@sequoiainc.com!
